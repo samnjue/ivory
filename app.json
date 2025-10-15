@@ -25,6 +25,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      ["expo-font",
+      {
+        "fonts": [
+          "node_modules/@expo-google-fonts/red-rose/RedRose_400Regular.ttf",
+          "node_modules/@expo-google-fonts/red-rose/RedRose_500Medium.ttf",
+          "node_modules/@expo-google-fonts/red-rose/RedRose_600SemiBold.ttf",
+          "node_modules/@expo-google-fonts/red-rose/RedRose_700Bold.ttf"
+        ]
+      }],
+      "expo-secure-store"
+    ]
   }
 }
