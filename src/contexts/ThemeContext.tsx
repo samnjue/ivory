@@ -21,6 +21,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
+  useEffect(() => {
+    if (userTheme === 'system') {
+      const resolvedTheme = systemTheme ?? 'light';
+      AsyncStorage.setItem('userTheme', resolvedTheme);
+      setUserTheme(resolvedTheme);
+    }
+  }, [systemTheme, userTheme]);
+
   const setTheme = (newTheme: Theme) => {
     setUserTheme(newTheme);
     AsyncStorage.setItem('userTheme', newTheme);
@@ -39,4 +47,4 @@ export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) throw new Error('useTheme must be used within ThemeProvider');
   return context;
-}
+};
