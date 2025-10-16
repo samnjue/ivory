@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity, useColorScheme, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity, useColorScheme, Image, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -34,7 +34,13 @@ export default function RegisterScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity 
-                    style={[styles.backButton, { backgroundColor: isDark ? '#2a2a2a' : '#e7e7e7ff' }]}
+                    style={[styles.backButton, { backgroundColor: isDark ? '#2a2a2a' : '#FFFDFD', ...Platform.select({
+                        ios: {},
+                        android: {
+                            elevation: 15,
+                            shadowColor: isDark ? "#FFFFFF" : "#000000ff"
+                        }
+                    }) }]}
                     onPress={() => navigation.goBack()}
                 >
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
@@ -84,6 +90,7 @@ export default function RegisterScreen() {
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
                         placeholderTextColor={colors.text}
+                        autoCapitalize='none'
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                         <Ionicons 
@@ -127,7 +134,7 @@ export default function RegisterScreen() {
 
             {/* Google Sign In Button */}
             <TouchableOpacity 
-                style={[styles.googleButton, { backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8' }]}
+                style={[styles.googleButton, { backgroundColor: isDark ? '#2a2a2a' : '#fffffd' }]}
                 onPress={signInWithGoogle}
             >
                 <Image 
@@ -160,7 +167,7 @@ const styles = StyleSheet.create({
         left: 0,
         width: 43,
         height: 43,
-        borderRadius: 20,
+        borderRadius: 13,
         justifyContent: 'center',
         alignItems: 'center',
     },

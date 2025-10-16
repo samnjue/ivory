@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, useColorScheme, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, useColorScheme, Image, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -39,7 +39,13 @@ export default function LoginScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity 
-                    style={[styles.backButton, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}
+                    style={[styles.backButton, { backgroundColor: isDark ? '#2a2a2a' : '#FFFDFD', ...Platform.select({
+                        ios: {},
+                        android: {
+                            elevation: 15,
+                            shadowColor: isDark ? "#FFFFFF" : "#000000ff"
+                        }
+                    }) }]}
                     onPress={() => navigation.goBack()}
                 >
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
@@ -56,8 +62,8 @@ export default function LoginScreen() {
 
             {/* Input Fields */}
             <View style={styles.inputContainer}>
-                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' }]}>
-                    <Ionicons name="mail-outline" size={20} color={colors.accent} style={styles.icon} />
+                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#1b1c1dff' : '#FFFDFD' }]}>
+                    <Ionicons name="mail-outline" size={20} color={colors.text} style={styles.icon} />
                     <TextInput
                         style={[styles.input, { color: colors.text }]}
                         placeholder="Enter Your Email"
@@ -65,25 +71,26 @@ export default function LoginScreen() {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        placeholderTextColor={colors.accent}
+                        placeholderTextColor={colors.text}
                     />
                 </View>
 
-                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' }]}>
-                    <Ionicons name="lock-closed-outline" size={20} color={colors.accent} style={styles.icon} />
+                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#1b1c1dff' : '#FFFDFD' }]}>
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.text} style={styles.icon} />
                     <TextInput
                         style={[styles.input, { color: colors.text }]}
                         placeholder="Password"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
-                        placeholderTextColor={colors.accent}
+                        placeholderTextColor={colors.text}
+                        autoCapitalize='none'
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                         <Ionicons 
                             name={showPassword ? "eye-outline" : "eye-off-outline"} 
                             size={20} 
-                            color={colors.accent} 
+                            color={colors.text} 
                         />
                     </TouchableOpacity>
                 </View>
@@ -91,7 +98,7 @@ export default function LoginScreen() {
 
             {/* Forgot Password */}
             <TouchableOpacity onPress={handleForgot} style={styles.forgotContainer}>
-                <Text style={[styles.forgotText, { color: colors.accent }]}>
+                <Text style={[styles.forgotText, { color: "#818181" }]}>
                     Forgot Password?
                 </Text>
             </TouchableOpacity>
@@ -113,7 +120,7 @@ export default function LoginScreen() {
 
             {/* Sign Up Link */}
             <View style={styles.signUpContainer}>
-                <Text style={[styles.signUpText, { color: colors.accent }]}>
+                <Text style={[styles.signUpText, { color: "#818181" }]}>
                     Don't Have An Account?{' '}
                 </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
@@ -124,15 +131,15 @@ export default function LoginScreen() {
             </View>
 
             {/* Divider */}
-            <Text style={[styles.divider, { color: colors.accent }]}>or log in using</Text>
+            <Text style={[styles.divider, { color: "#818181" }]}>or log in using</Text>
 
             {/* Google Sign In Button */}
             <TouchableOpacity 
-                style={[styles.googleButton, { backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8' }]}
+                style={[styles.googleButton, { backgroundColor: isDark ? '#2a2a2a' : '#FFFFFD' }]}
                 onPress={signInWithGoogle}
             >
                 <Image 
-                    source={{ uri: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg' }}
+                    source={require("../../assets/icons/Google.png")}
                     style={styles.googleIcon}
                 />
                 <Text style={[styles.googleButtonText, { color: colors.text }]}>
@@ -161,7 +168,7 @@ const styles = StyleSheet.create({
         left: 0,
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 13,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -172,8 +179,8 @@ const styles = StyleSheet.create({
     title: { 
         fontSize: 32, 
         marginBottom: 30,
-        fontFamily: 'RedRose_400Regular',
-        fontWeight: 'bold',
+        fontFamily: 'RedRose_700Bold',
+        fontWeight: '600',
     },
     inputContainer: {
         marginBottom: 10,
@@ -184,7 +191,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 15,
         marginBottom: 15,
-        height: 55,
+        height: 65,
     },
     icon: {
         marginRight: 10,
@@ -192,6 +199,8 @@ const styles = StyleSheet.create({
     input: { 
         flex: 1,
         fontSize: 15,
+        fontFamily: "RedRose_400Regular",
+        top: 1
     },
     forgotContainer: {
         alignItems: 'flex-end',
@@ -199,9 +208,10 @@ const styles = StyleSheet.create({
     },
     forgotText: {
         fontSize: 13,
+        fontFamily: "RedRose_400Regular",
     },
     loginButton: {
-        height: 55,
+        height: 65,
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
@@ -209,6 +219,7 @@ const styles = StyleSheet.create({
     },
     loginButtonText: {
         fontSize: 16,
+        fontFamily: "RedRose_600SemiBold",
         fontWeight: '600',
     },
     signUpContainer: {
@@ -218,14 +229,17 @@ const styles = StyleSheet.create({
     },
     signUpText: {
         fontSize: 14,
+        fontFamily: "RedRose_400Regular",
     },
     signUpLink: {
         fontSize: 14,
+        fontFamily: "RedRose_500Medium",
     },
     divider: {
         textAlign: 'center',
         marginVertical: 20,
         fontSize: 13,
+        fontFamily: "RedRose_400Regular",
     },
     googleButton: {
         height: 55,
@@ -242,5 +256,7 @@ const styles = StyleSheet.create({
     googleButtonText: {
         fontSize: 15,
         fontWeight: '500',
+        fontFamily: "RedRose_500Medium",
+        top: 3
     },
 });
