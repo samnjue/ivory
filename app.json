@@ -4,14 +4,10 @@
     "slug": "ivory",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icons/adaptive-icon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "ivory",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -21,22 +17,43 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-font",
-      {
-        "fonts": [
-          "node_modules/@expo-google-fonts/red-rose/RedRose_400Regular.ttf",
-          "node_modules/@expo-google-fonts/red-rose/RedRose_500Medium.ttf",
-          "node_modules/@expo-google-fonts/red-rose/RedRose_600SemiBold.ttf",
-          "node_modules/@expo-google-fonts/red-rose/RedRose_700Bold.ttf"
-        ]
-      }],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/red-rose/RedRose_400Regular.ttf",
+            "node_modules/@expo-google-fonts/red-rose/RedRose_500Medium.ttf",
+            "node_modules/@expo-google-fonts/red-rose/RedRose_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/red-rose/RedRose_700Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icons/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/icons/splash-icon-dark.png",
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "10f94b79-a220-4584-86ca-454939fcf308"
+      }
+    }
   }
 }
