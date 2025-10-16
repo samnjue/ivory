@@ -1,7 +1,6 @@
 //@ts-nocheck
 import React from 'react';
 import { View, StyleSheet, useColorScheme, Image, TouchableOpacity, Text } from 'react-native';
-import { useTheme } from '../contexts/ThemeContext';
 import { COLORS } from '../constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +13,7 @@ export default function OnboardingScreen() {
 
     return (
         <LinearGradient
-            colors={[colors.gradientEnd, colors.gradientStart]}
+            colors={[colors.gradientStart, colors.gradientEnd]}
             style={styles.container}
         >
             <View style={styles.content}>
@@ -34,14 +33,14 @@ export default function OnboardingScreen() {
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
                         style={[styles.button, { backgroundColor: isDark ? 'rgba(139, 92, 139, 0.6)' : 'rgba(139, 92, 139, 0.5)' }]}
-                        onPress={() => {/* Handle Get Started */}}
+                        onPress={() => navigation.navigate('Register' as never)}
                     >
                         <Text style={styles.buttonText}>Get Started</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity
                         style={styles.loginButton}
-                        onPress={() => {/* Handle Login */}}
+                        onPress={() => navigation.navigate('Login' as never)}
                     >
                         <Text style={styles.loginText}>Login</Text>
                     </TouchableOpacity>

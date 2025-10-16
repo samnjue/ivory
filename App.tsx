@@ -13,10 +13,18 @@ import {
 } from '@expo-google-fonts/red-rose';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
+import { supabase } from './src/utils/supabase';
+import * as Linking from 'expo-linking';
 
 SplashScreen.preventAutoHideAsync();
+
+const RootNavigator = () => {
+  const { session } = useAuth();
+  return session ? <MainNavigator /> : <AuthNavigator />;
+};
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -25,7 +33,19 @@ export default function App() {
     RedRose_600SemiBold,
     RedRose_700Bold,
   });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+  const handleDeepLink = async (url: string | null) => {
+    if (url) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(url);
+      if (error) console.error('OAuth callback error:', error);
+    }
+  };
+
+    Linking.getInitialURL().then(handleDeepLink);
+    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -36,14 +56,14 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <AuthProvider>
       <ThemeProvider>
         <SafeAreaProvider>
           <NavigationContainer>
-            {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+            <RootNavigator />
           </NavigationContainer>
         </SafeAreaProvider>
       </ThemeProvider>
-    </GestureHandlerRootView>
+    </AuthProvider>
   );
 }
