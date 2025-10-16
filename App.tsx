@@ -18,13 +18,36 @@ import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
 import { supabase } from './src/utils/supabase';
 import * as Linking from 'expo-linking';
+import { createStackNavigator } from '@react-navigation/stack';
+import { CardStyleInterpolators, TransitionSpecs } from '@react-navigation/stack';
+
+const Stack = createStackNavigator();
 
 SplashScreen.preventAutoHideAsync();
 
-const RootNavigator = () => {
+const RootNavigator =() => {
   const { session } = useAuth();
-  return session ? <MainNavigator /> : <AuthNavigator />;
-};
+
+  return (
+    <Stack.Navigator
+      initialRouteName={session ? "Main" : "Auth"}
+      screenOptions={{
+        headerShown: false,
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+        transitionSpec: {
+          open: TransitionSpecs.TransitionIOSSpec,
+          close: TransitionSpecs.TransitionIOSSpec,
+        },
+      }}
+    >
+      {session ? (
+        <Stack.Screen name="Main" component={MainNavigator} />
+      ) : (
+        <Stack.Screen name="Auth" component={AuthNavigator} />
+      )}
+    </Stack.Navigator>
+  );
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({

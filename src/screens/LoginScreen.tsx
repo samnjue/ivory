@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     },
     logo: {
         height: 30,
-        width: 100,
+        width: 150,
     },
     title: { 
         fontSize: 32, 

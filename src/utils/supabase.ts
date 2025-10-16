@@ -2,26 +2,41 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
-const secureStorage = {
+const MAX_SECURESTORE_SIZE = 2048;
+
+const hybridStorage = {
   getItem: async (key: string) => {
     try {
-      return await SecureStore.getItemAsync(key);
-    } catch {
-      return await AsyncStorage.getItem(key);
+      const secureData = await SecureStore.getItemAsync(key);
+      if (secureData) return secureData;
+      const asyncData = await AsyncStorage.getItem(key);
+      return asyncData;
+    } catch (error) {
+      console.error('Storage getItem error:', error);
+      return null;
     }
   },
   setItem: async (key: string, value: string) => {
     try {
-      await SecureStore.setItemAsync(key, value);
-    } catch {
-      await AsyncStorage.setItem(key, value);
+      const valueSize = new TextEncoder().encode(value).length;
+      if (valueSize <= MAX_SECURESTORE_SIZE) {
+        await SecureStore.setItemAsync(key, value);
+      } else {
+        console.warn(`Data for ${key} exceeds ${MAX_SECURESTORE_SIZE} bytes, stored in AsyncStorage`);
+        await AsyncStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.error('Storage setItem error:', error);
+      throw error;
     }
   },
   removeItem: async (key: string) => {
     try {
-      await SecureStore.deleteItemAsync(key);
-    } catch {
-      await AsyncStorage.removeItem(key);
+      await SecureStore.deleteItemAsync(key).catch(() => {});
+      await AsyncStorage.removeItem(key).catch(() => {});
+    } catch (error) {
+      console.error('Storage removeItem error:', error);
+      throw error;
     }
   },
 };
@@ -31,7 +46,7 @@ const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: secureStorage,
+    storage: hybridStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
