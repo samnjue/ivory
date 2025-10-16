@@ -18,7 +18,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.ivory.ivory"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,7 +44,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "image": "./assets/icons/splash-icon-dark.png",
+            "image": "./assets/icons/splash-icon.png",
             "backgroundColor": "#000000"
           }
         }

@@ -9,38 +9,44 @@ import { useNavigation } from '@react-navigation/native';
 export default function OnboardingScreen() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const colors = isDark === 'dark' ? COLORS.dark : COLORS.light;
+    const colors = isDark ? COLORS.dark : COLORS.light;
     const navigation = useNavigation();
 
     return (
         <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
+            colors={[colors.gradientEnd, colors.gradientStart]}
             style={styles.container}
         >
-            <View style={styles.imageContainer}>
-                <Image
-                    source={require('../../assets/ivorystar.png')}
-                    style={styles.starImage}
-                    resizeMode="contain"
-                />
-                <Image
-                    source={require('../../assets/ivory.png')}
-                    style={styles.textImage}
-                    resizeMode="contain"
-                />
+            <View style={styles.content}>
+                <View style={styles.imageContainer}>
+                    <Image
+                        source={require('../../assets/ivorystar.png')}
+                        style={styles.starImage}
+                        resizeMode="contain"
+                    />
+                    <Image
+                        source={require('../../assets/ivory.png')}
+                        style={styles.textImage}
+                        resizeMode="contain"
+                    />
+                </View>
+                
+                <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                        style={[styles.button, { backgroundColor: isDark ? 'rgba(139, 92, 139, 0.6)' : 'rgba(139, 92, 139, 0.5)' }]}
+                        onPress={() => {/* Handle Get Started */}}
+                    >
+                        <Text style={styles.buttonText}>Get Started</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        style={styles.loginButton}
+                        onPress={() => {/* Handle Login */}}
+                    >
+                        <Text style={styles.loginText}>Login</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <TouchableOpacity
-                style={[styles.button, { backgroundColor: colors.primary }]}
-                onPress={() => {/* Handle Get Started */}}
-            >
-                <Text style={styles.buttonText}>Get Started</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.button, { backgroundColor: colors.secondary }]}
-                onPress={() => {/* Handle Login */}}
-            >
-                <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
         </LinearGradient>
     );
 }
@@ -48,35 +54,57 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingBottom: 100,
     },
     imageContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: 100,
     },
     starImage: {
         width: 200,
         height: 200,
+        marginBottom: 20,
     },
     textImage: {
-        width: 150,
-        height: 50,
-        //marginTop: -20,
+        width: 250,
+        height: 80,
+        left: 10
+    },
+    buttonContainer: {
+        width: '100%',
+        alignItems: 'center',
+        paddingHorizontal: 40,
     },
     button: {
-        paddingVertical: 10,
+        paddingVertical: 16,
         paddingHorizontal: 20,
-        borderRadius: 10,
-        marginVertical: 10,
-        width: '80%',
+        borderRadius: 15,
+        width: '85%',
         alignItems: 'center',
-        bottom: 120
+        marginBottom: 20,
     },
     buttonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 18,
+        fontFamily: "RedRose_400Regular",
+        fontWeight: '600',
+    },
+    loginButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        width: '85%',
+        alignItems: 'center',
+    },
+    loginText: {
+        color: '#fff',
+        fontSize: 18,
         fontFamily: "RedRose_400Regular",
     },
 });

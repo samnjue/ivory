@@ -5,8 +5,8 @@ export const COLORS = {
         background: '#FFFFFF',
         text: '#000000',
         accent: '#FF1493',
-        gradientStart: '#FF69B4',
-        gradientEnd: '#9370DB',
+        gradientStart: '#726df8ff',
+        gradientEnd: '#FF69B4',
     },
     dark: {
         primary: '#C71585',
