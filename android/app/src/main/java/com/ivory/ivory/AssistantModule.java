@@ -41,7 +41,7 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             }
 
             // Open assistant settings where user can select our app as default assistant
-            Intent intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+            Intent intent = new Intent(Settings.ACTION_ASSISTANT_SETTINGS);
             currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
             promise.resolve(true);
         } catch (Exception e) {

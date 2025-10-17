@@ -3,7 +3,6 @@ package com.ivory.ivory;
 import android.content.Intent;
 import android.os.Bundle;
 import android.service.voice.VoiceInteractionService;
-import android.service.voice.VoiceInteractionSession;
 
 public class IvoryAssistantSessionService extends VoiceInteractionService {
     
