@@ -81,7 +81,7 @@ export default function SettingsScreen({ navigation }: any) {
 					Sammy Njue
 				</Text>
 				<Text style={[styles.userEmail, { color: colors.text }]}>
-					sammynjue0@gmail.com
+					sammynjue10@gmail.com
 				</Text>
 			</View>
 			<View style={styles.preferencesContainer}>

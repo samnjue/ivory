@@ -9,6 +9,7 @@ import {
 	useColorScheme,
 	ScrollView,
 	TextInput,
+	Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../constants/colors";
@@ -25,6 +26,7 @@ import {
 	Captions,
 	CaptionsOff,
 	AudioLines,
+	SendHorizontal,
 } from "lucide-react-native";
 import Animated, {
 	useSharedValue,
@@ -82,13 +84,12 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 			Extrapolate.CLAMP
 		);
 
-		// create sine wave points
 		let path = `M 0 ${baseY}`;
 		for (let x = 0; x <= width; x += 10) {
 			const y = baseY + A * Math.sin((2 * Math.PI * x) / λ + φ);
 			path += ` L ${x} ${y}`;
 		}
-		path += ` L ${width} 200 L 0 200 Z`; // close bottom
+		path += ` L ${width} 200 L 0 200 Z`;
 
 		return { d: path };
 	});
@@ -170,7 +171,6 @@ function PillsControls({
 
 	return (
 		<Animated.View style={[styles.pillControlsWrapper, animStyle]}>
-			{/* Pause/Resume */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -193,7 +193,6 @@ function PillsControls({
 				)}
 			</TouchableOpacity>
 
-			{/* Screen share: Rectangle + ArrowUp inside */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -217,7 +216,6 @@ function PillsControls({
 				</View>
 			</TouchableOpacity>
 
-			{/* Camera */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -235,7 +233,6 @@ function PillsControls({
 				/>
 			</TouchableOpacity>
 
-			{/* Stop */}
 			<TouchableOpacity
 				style={[styles.pillBtn, styles.pillBtnStop]}
 				onPress={onStop}
@@ -267,7 +264,6 @@ function CaptionsList({
 
 	useEffect(() => {
 		if (visible && scrollViewRef.current && captions.length > 0) {
-			// Auto-scroll to bottom when new captions appear
 			setTimeout(() => {
 				scrollViewRef.current?.scrollToEnd({ animated: true });
 			}, 100);
@@ -318,6 +314,7 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 	const [paused, setPaused] = useState(false);
 	const [inputText, setInputText] = useState("");
 	const [inputHeight, setInputHeight] = useState(40);
+	const [keyboardVisible, setKeyboardVisible] = useState(false);
 
 	// Animated values
 	const menuOpacity = useSharedValue(1);
@@ -330,6 +327,37 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 	const circleY = useSharedValue(0);
 	const circleScale = useSharedValue(1);
 	const circleBounce = useSharedValue(0);
+	const typingProgress = useSharedValue(0);
+	const sendScale = useSharedValue(0);
+
+	// Keyboard handling
+	useEffect(() => {
+		const keyboardDidShowListener = Keyboard.addListener(
+			"keyboardDidShow",
+			() => {
+				setKeyboardVisible(true);
+				inputBarTranslateY.value = withSpring(-25, {
+					damping: 20,
+					stiffness: 100,
+				});
+			}
+		);
+		const keyboardDidHideListener = Keyboard.addListener(
+			"keyboardDidHide",
+			() => {
+				setKeyboardVisible(false);
+				inputBarTranslateY.value = withSpring(0, {
+					damping: 20,
+					stiffness: 100,
+				});
+			}
+		);
+
+		return () => {
+			keyboardDidShowListener.remove();
+			keyboardDidHideListener.remove();
+		};
+	}, []);
 
 	useEffect(() => {
 		menuOpacity.value = withTiming(listeningMode ? 0 : 1, { duration: 400 });
@@ -342,12 +370,15 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 		chatContentOpacity.value = withTiming(listeningMode ? 0 : 1, {
 			duration: 400,
 		});
-		inputBarTranslateY.value = withSpring(listeningMode ? height : 0, {
-			damping: 30,
-			stiffness: 90,
-		});
+		inputBarTranslateY.value = withSpring(
+			listeningMode ? height : keyboardVisible ? -25 : 0,
+			{
+				damping: 30,
+				stiffness: 90,
+			}
+		);
 		circleOpacity.value = withTiming(listeningMode ? 1 : 0, { duration: 400 });
-	}, [listeningMode]);
+	}, [listeningMode, keyboardVisible]);
 
 	useEffect(() => {
 		pauseTextOpacity.value = withTiming(paused ? 1 : 0, { duration: 300 });
@@ -365,6 +396,16 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 			circleY.value = withSpring(0, { damping: 17, stiffness: 100 });
 		}
 	}, [captionsEnabled, paused]);
+
+	useEffect(() => {
+		typingProgress.value = withTiming(inputText.length > 0 ? 1 : 0, {
+			duration: 200,
+		});
+		sendScale.value = withSpring(inputText.length > 0 ? 1 : 0, {
+			damping: 20,
+			stiffness: 80,
+		});
+	}, [inputText]);
 
 	// Animated styles
 	const menuAnimStyle = useAnimatedStyle(() => ({
@@ -392,6 +433,13 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 	const pauseTextAnimStyle = useAnimatedStyle(() => ({
 		opacity: pauseTextOpacity.value,
 	}));
+	const voiceAnimStyle = useAnimatedStyle(() => ({
+		opacity: 1 - typingProgress.value,
+	}));
+	const sendAnimStyle = useAnimatedStyle(() => ({
+		opacity: typingProgress.value,
+		transform: [{ scale: sendScale.value }],
+	}));
 
 	// Captions data (mock)
 	const captionsData = [
@@ -405,7 +453,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 	// UI Event handlers
 	const handleStartListening = () => {
 		if (!listeningMode) {
-			// Bounce animation when activated
 			circleBounce.value = withSpring(
 				-15,
 				{ damping: 10, stiffness: 200 },
@@ -420,7 +467,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 	const handlePause = () => setPaused((p) => !p);
 
 	const handleStop = () => {
-		// Bounce down when deactivated
 		circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
 			circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
 		});
@@ -440,9 +486,13 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 
 	const handleToggleCaptions = () => setCaptionsEnabled((c) => !c);
 
+	const handleSend = () => {
+		console.log("Sending:", inputText);
+		setInputText("");
+	};
+
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
-			{/* Header */}
 			<View
 				style={[
 					styles.header,
@@ -483,14 +533,12 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 				</Animated.View>
 			</View>
 
-			{/* Chat Content */}
 			<Animated.View style={[styles.chatContainer, chatContentAnimStyle]}>
 				<ScrollView
 					style={styles.chatScroll}
 					contentContainerStyle={styles.chatContent}
 					showsVerticalScrollIndicator={false}
 				>
-					{/* User Message 1 */}
 					<View style={styles.userMessageContainer}>
 						<View
 							style={[
@@ -507,7 +555,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 						</View>
 					</View>
 
-					{/* AI Response */}
 					<View style={styles.aiMessageContainer}>
 						<Text style={[styles.aiMessageText, { color: colors.text }]}>
 							Awesome, a nature-filled weekend sounds perfect! Based on your
@@ -528,7 +575,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 						</Text>
 					</View>
 
-					{/* User Message 2 */}
 					<View style={styles.userMessageContainer}>
 						<View
 							style={[
@@ -547,7 +593,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 				</ScrollView>
 			</Animated.View>
 
-			{/* Input Bar */}
 			<Animated.View
 				style={[
 					styles.inputBar,
@@ -576,32 +621,54 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 					}
 					scrollEnabled
 				/>
-				<TouchableOpacity
-					style={styles.voiceButton}
-					onPress={handleStartListening}
+				<View
+					style={{ position: "relative", width: 43, height: 43, marginLeft: 8 }}
 				>
-					<LinearGradient
-						colors={["#e63946", "#4285f4"]}
-						start={{ x: 0, y: 0 }}
-						end={{ x: 1, y: 1 }}
-						style={styles.miniGradientBorder}
+					<Animated.View
+						style={[{ position: "absolute", left: 0, top: 0 }, voiceAnimStyle]}
+						pointerEvents={inputText.length > 0 ? "none" : "auto"}
 					>
-						<View
-							style={[
-								styles.miniLogoInnerContainer,
-								{ backgroundColor: isDark ? "#151515" : "#FFFFFF" },
-							]}
-						>
-							<Image
-								source={require("../../assets/ivorystar.png")}
-								style={styles.miniLogo}
-							/>
-						</View>
-					</LinearGradient>
-				</TouchableOpacity>
+						<TouchableOpacity onPress={handleStartListening}>
+							<LinearGradient
+								colors={["#e63946", "#4285f4"]}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={styles.miniGradientBorder}
+							>
+								<View
+									style={[
+										styles.miniLogoInnerContainer,
+										{ backgroundColor: isDark ? "#151515" : "#FFFFFF" },
+									]}
+								>
+									<Image
+										source={require("../../assets/ivorystar.png")}
+										style={styles.miniLogo}
+									/>
+								</View>
+							</LinearGradient>
+						</TouchableOpacity>
+					</Animated.View>
+					<Animated.View
+						style={[
+							{
+								position: "absolute",
+								left: 5,
+								top: 9,
+								justifyContent: "center",
+								alignItems: "center",
+							},
+							sendAnimStyle,
+						]}
+						pointerEvents={inputText.length === 0 ? "none" : "auto"}
+					>
+						<TouchableOpacity>
+							<SendHorizontal size={26} color={colors.text} />
+						</TouchableOpacity>
+					</Animated.View>
+				</View>
 			</Animated.View>
 
-			{/* Listening Circle */}
 			<Animated.View
 				style={[
 					styles.shadowContainer,
@@ -633,7 +700,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 					</View>
 				</LinearGradient>
 
-				{/* Pause Text Overlay */}
 				{listeningMode && paused && (
 					<Animated.View
 						style={[styles.pauseTextContainer, pauseTextAnimStyle]}
@@ -645,7 +711,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 				)}
 			</Animated.View>
 
-			{/* Pills Controls */}
 			<PillsControls
 				show={listeningMode}
 				paused={paused}
@@ -655,7 +720,6 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 				onCamera={handleCamera}
 			/>
 
-			{/* Captions */}
 			<CaptionsList
 				visible={listeningMode && captionsEnabled && !paused}
 				captions={captionsData}
@@ -745,7 +809,7 @@ const styles = StyleSheet.create({
 		elevation: 20,
 		shadowColor: "#000000",
 		borderWidth: 0.15,
-		borderColor: "#A6A6A6",
+		borderColor: "#7a7a7aff",
 	},
 	inputButton: {
 		width: 40,
