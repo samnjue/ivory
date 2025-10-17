@@ -1,5 +1,7 @@
 import { NativeModules, NativeEventEmitter, Platform, Alert } from "react-native";
 
+console.log("Available Native Modules:", NativeModules);
+console.log("AssistantModule:", NativeModules.AssistantModule);
 interface AssistantModuleInterface {
 	requestAssistPermission: () => Promise<boolean>;
 	isAssistantEnabled: () => Promise<boolean>;
