@@ -38,13 +38,8 @@ public class AssistantModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            Intent intent;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                intent = new Intent(Settings.ACTION_ASSISTANT_SETTINGS);
-            } else {
-                intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
-            }
-
+            // Use a widely supported intent for voice assistant settings
+            Intent intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
             currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
             promise.resolve(true);
         } catch (Exception e) {

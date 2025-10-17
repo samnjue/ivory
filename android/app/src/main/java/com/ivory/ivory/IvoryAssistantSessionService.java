@@ -12,7 +12,7 @@ public class IvoryAssistantSessionService extends VoiceInteractionService {
         super.onReady();
     }
 
-    @Override
+    // Removed @Override for compatibility
     public VoiceInteractionSession onNewSession(Bundle args) {
         return new IvoryAssistantSession(this);
     }
@@ -26,8 +26,8 @@ public class IvoryAssistantSessionService extends VoiceInteractionService {
     private void launchAssist() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                       Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                       Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP);
         intent.putExtra("showAssistOverlay", true);
         startActivity(intent);
     }
