@@ -116,7 +116,11 @@ export default function CustomDrawerContent({ navigation }: any) {
 							{section.day}
 						</Text>
 						{section.chats.map((chat) => (
-							<TouchableOpacity key={chat} style={styles.chatItem}>
+							<TouchableOpacity
+								key={chat}
+								style={styles.chatItem}
+								onPress={() => navigation.navigate("ChatScreen")}
+							>
 								<Text
 									style={[styles.chatText, { color: colors.text }]}
 									numberOfLines={1}

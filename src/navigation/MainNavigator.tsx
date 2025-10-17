@@ -28,9 +28,9 @@ export default function MainNavigator() {
 				swipeMinDistance: 5,
 			}}
 		>
-			<Drawer.Screen name="Home" component={HomeScreen} />
-			<Drawer.Screen name="Chat" component={ChatScreen} />
-			<Drawer.Screen name="Settings" component={SettingsScreen} />
+			<Drawer.Screen name="HomeScreen" component={HomeScreen} />
+			<Drawer.Screen name="ChatScreen" component={ChatScreen} />
+			<Drawer.Screen name="SettingsScreen" component={SettingsScreen} />
 		</Drawer.Navigator>
 	);
 }

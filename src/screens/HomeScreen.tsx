@@ -181,14 +181,13 @@ function PillsControls({
 					<AudioLines
 						size={24}
 						color={isDark ? "#ffffff" : "#000000"}
-						style={{ marginHorizontal: 7 }}
 					/>
 				) : (
 					<FontAwesome6
 						name="pause"
 						size={24}
 						color={isDark ? "#ffffff" : "#000000"}
-						style={{ marginHorizontal: 7 }}
+						style={{ marginHorizontal: 4.5 }}
 					/>
 				)}
 			</TouchableOpacity>
@@ -601,7 +600,7 @@ const styles = StyleSheet.create({
 		zIndex: 9,
 	},
 	newChatText: {
-		fontSize: 20,
+		fontSize: 18,
 		fontFamily: "RedRose_500Medium",
 	},
 	captionsIcon: {
@@ -622,6 +621,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 16,
 		elevation: 40,
 		borderRadius: 140,
+    zIndex: 200
 	},
 	gradientBorder: {
 		width: 245,
@@ -662,8 +662,9 @@ const styles = StyleSheet.create({
 		left: 10,
 	},
 	pauseText: {
-		fontSize: 18,
-		fontFamily: "RedRose_600SemiBold",
+		fontSize: 25,
+		top: 10,
+		fontFamily: "RedRose_400Regular",
 		textAlign: "center",
 	},
 	startText: {
