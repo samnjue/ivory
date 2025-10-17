@@ -1,4 +1,4 @@
-import { NativeModules, NativeEventEmitter, Platform } from "react-native";
+import { NativeModules, NativeEventEmitter, Platform, Alert } from "react-native";
 
 interface AssistantModuleInterface {
 	requestAssistPermission: () => Promise<boolean>;
@@ -21,7 +21,7 @@ class AssistantAPI {
 	//Opens Android settings where user can select your app
 	async requestAssistPermission(): Promise<boolean> {
 		if (Platform.OS !== "android" || !AssistantModule) {
-			console.warn("Assistant Module only available on Android");
+			Alert.alert("Assistant Module only available on Android");
 			return false;
 		}
 		try {
