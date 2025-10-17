@@ -78,13 +78,12 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 			Extrapolate.CLAMP
 		);
 
-		// create sine wave points
 		let path = `M 0 ${baseY}`;
 		for (let x = 0; x <= width; x += 10) {
 			const y = baseY + A * Math.sin((2 * Math.PI * x) / λ + φ);
 			path += ` L ${x} ${y}`;
 		}
-		path += ` L ${width} 200 L 0 200 Z`; // close bottom
+		path += ` L ${width} 200 L 0 200 Z`;
 
 		return { d: path };
 	});
@@ -119,7 +118,7 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 						<Stop offset="100%" stopColor="#6ea8fe" stopOpacity="0.2" />
 					</SvgGradient>
 					<SvgGradient id="waveGrad2" x1="0" y1="0" x2="1" y2="1">
-						<Stop offset="0%" stopColor="#e63946" stopOpacity="0.8" />
+						<Stop offset="0%" stopColor="#EE3585" stopOpacity="0.8" />
 						<Stop offset="100%" stopColor="#ff7b89" stopOpacity="0.2" />
 					</SvgGradient>
 				</Defs>
@@ -266,7 +265,6 @@ function CaptionsList({
 
 	useEffect(() => {
 		if (visible && scrollViewRef.current && captions.length > 0) {
-			// Auto-scroll to bottom when new captions appear
 			setTimeout(() => {
 				scrollViewRef.current?.scrollToEnd({ animated: true });
 			}, 100);

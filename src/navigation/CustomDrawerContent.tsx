@@ -143,25 +143,30 @@ export default function CustomDrawerContent({ navigation }: any) {
 					},
 				]}
 			>
-				<View style={styles.profileRow}>
-					<Image source={avatarSource} style={styles.avatar} />
-					<View style={styles.profileInfo}>
-						<Text style={[styles.profileName, { color: colors.text }]}>
-							Sammy Njue
-						</Text>
-						<Text
-							style={[styles.profileEmail, { color: isDark ? "#999" : "#666" }]}
+				<TouchableOpacity onPress={() => navigation.navigate("SettingsScreen")}>
+					<View style={styles.profileRow}>
+						<Image source={avatarSource} style={styles.avatar} />
+						<View style={styles.profileInfo}>
+							<Text style={[styles.profileName, { color: colors.text }]}>
+								Sammy Njue
+							</Text>
+							<Text
+								style={[
+									styles.profileEmail,
+									{ color: isDark ? "#999" : "#666" },
+								]}
+							>
+								sammynjue10@gmail.com
+							</Text>
+						</View>
+						<TouchableOpacity
+							style={styles.menuButton}
+							onPress={() => navigation.navigate("SettingsScreen")}
 						>
-							sammynjue10@gmail.com
-						</Text>
+							<Text style={[styles.menuDots, { color: colors.text }]}>⋮</Text>
+						</TouchableOpacity>
 					</View>
-					<TouchableOpacity
-						style={styles.menuButton}
-						onPress={() => supabase.auth.signOut()}
-					>
-						<Text style={[styles.menuDots, { color: colors.text }]}>⋮</Text>
-					</TouchableOpacity>
-				</View>
+				</TouchableOpacity>
 			</View>
 		</View>
 	);
