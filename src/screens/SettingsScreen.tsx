@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	View,
 	Text,
@@ -6,6 +6,7 @@ import {
 	Platform,
 	Image,
 	useColorScheme,
+	Alert,
 } from "react-native";
 import { TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -15,6 +16,7 @@ import SwitchToggle from "react-native-switch-toggle";
 import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../utils/supabase";
+import AssistantModule from "../modules/AssistantModule";
 
 export default function SettingsScreen({ navigation }: any) {
 	const colorScheme = useColorScheme();
@@ -29,6 +31,67 @@ export default function SettingsScreen({ navigation }: any) {
 	const backgroundActive = isDark ? "#FFFFFF" : "#000000";
 	const backgroundInactive = isDark ? "#6e6e6eff" : "#b6b6b6ff";
 	const circleColor = isDark ? "#000000" : "#FFFFFF";
+
+	useEffect(() => {
+		checkAssistantStatus();
+	}, []);
+
+	useEffect(() => {
+		const unsubscribe = navigation.addListener("focus", () => {
+			checkAssistantStatus();
+		});
+
+		return unsubscribe;
+	}, [navigation]);
+
+	const checkAssistantStatus = async () => {
+		try {
+			const enabled = await AssistantModule.isAssistantEnabled();
+			setIsDefaultAssistant(enabled);
+		} catch (error) {
+			console.error("Error checking assistant status:", error);
+		}
+	};
+
+	const handleToggleAssistant = () => {
+		if (isDefaultAssistant) {
+			handleOpenAssistantSettings("disable");
+		} else {
+			handleOpenAssistantSettings("enable");
+		}
+	};
+
+	const handleOpenAssistantSettings = async (mode: "enable" | "disable") => {
+		try {
+			const success = await AssistantModule.requestAssistPermission();
+
+			if (success) {
+				Alert.alert(
+					mode === "enable" ? "Enable Ivory Assistant" : "Change Assistant",
+					mode === "enable"
+						? "You will be redirected to Android settings. Please:\n\n" +
+								'1. Tap on "Assist app"\n' +
+								'2. Select "Ivory" from the list\n' +
+								"3. Grant any requested permissions\n\n" +
+								"After enabling, long-press the home button to activate Ivory!"
+						: "You will be redirected to Android settings. Please:\n\n" +
+								'1. Tap on "Assist app"\n' +
+								"2. Select another app or none to disable Ivory as default assistant.",
+					[
+						{
+							text: "Got it",
+							onPress: () => {},
+						},
+					]
+				);
+			}
+		} catch (error) {
+			Alert.alert(
+				"Error",
+				"Failed to open assistant settings. Please try again."
+			);
+		}
+	};
 
 	return (
 		<View
@@ -85,19 +148,26 @@ export default function SettingsScreen({ navigation }: any) {
 				</Text>
 			</View>
 			<View style={styles.preferencesContainer}>
-				<Text style={[styles.sectionTitle, { color: isDark ? "#b9b9b9ff" : "#4B4B4B" }]}>
+				<Text
+					style={[
+						styles.sectionTitle,
+						{ color: isDark ? "#b9b9b9ff" : "#4B4B4B" },
+					]}
+				>
 					Preferences
 				</Text>
 				<View style={styles.preferenceRow}>
 					<View style={[styles.preferenceLeft, { left: 9 }]}>
 						<UserRoundCog color={colors.text} size={24} />
-						<Text style={[styles.preferenceText, { color: colors.text, left: 5 }]}>
+						<Text
+							style={[styles.preferenceText, { color: colors.text, left: 5 }]}
+						>
 							Set as default Assistant
 						</Text>
 					</View>
 					<SwitchToggle
 						switchOn={isDefaultAssistant}
-						onPress={() => setIsDefaultAssistant((prev) => !prev)}
+						onPress={handleToggleAssistant}
 						backgroundColorOn={backgroundActive}
 						backgroundColorOff={backgroundInactive}
 						circleColorOn={circleColor}
@@ -142,12 +212,11 @@ export default function SettingsScreen({ navigation }: any) {
 					/>
 				</View>
 			</View>
-			<TouchableOpacity style={styles.logoutButton} onPress={() => supabase.auth.signOut()}>
-				<LogOut
-					color="#FF0000"
-					size={26}
-					style={{ left: 8 }}
-				/>
+			<TouchableOpacity
+				style={styles.logoutButton}
+				onPress={() => supabase.auth.signOut()}
+			>
+				<LogOut color="#FF0000" size={26} style={{ left: 8 }} />
 				<Text style={styles.logoutText}>Log out</Text>
 			</TouchableOpacity>
 		</View>
