@@ -1,7 +1,8 @@
 import "react-native-gesture-handler";
-import React, { useState, useEffect } from "react";
-import { View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import React, { useState, useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import AssistantOverlay from "./src/components/AssistantOverlay";
+import AssistantModule from "./src/modules/AssistantModule";
 import { NavigationContainer } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
 import {
@@ -83,15 +84,75 @@ export default function App() {
 
 	if (!fontsLoaded) return null;
 
+	const [showAssistOverlay, setShowAssistOverlay] = useState(false);
+	const navigationRef = useRef<any>(null);
+
+	useEffect(() => {
+		// Handle initial launch with assist intent
+		const handleInitialURL = async () => {
+			try {
+				const url = await Linking.getInitialURL();
+				if (url && url.includes("showAssistOverlay=true")) {
+					setShowAssistOverlay(true);
+				}
+			} catch (error) {
+				console.error("Error handling initial URL:", error);
+			}
+		};
+
+		handleInitialURL();
+
+		// Listen for URL changes (assist triggers)
+		const subscription = Linking.addEventListener("url", (event) => {
+			if (event.url.includes("showAssistOverlay=true")) {
+				setShowAssistOverlay(true);
+			}
+		});
+
+		// Listen for native assist events
+		const assistListener = AssistantModule.addAssistListener(() => {
+			setShowAssistOverlay(true);
+		});
+
+		return () => {
+			subscription.remove();
+			if (assistListener) {
+				assistListener();
+			}
+		};
+	}, []);
+
+	const handleCloseOverlay = () => {
+		setShowAssistOverlay(false);
+	};
+
+	const handleNavigateToChat = () => {
+		setShowAssistOverlay(false);
+		// Navigate to chat screen
+		if (navigationRef.current) {
+			navigationRef.current.navigate("ChatScreen");
+		}
+	};
+
 	return (
-		<AuthProvider>
-			<ThemeProvider>
-				<SafeAreaProvider>
-					<NavigationContainer>
-						<RootNavigator />
-					</NavigationContainer>
-				</SafeAreaProvider>
-			</ThemeProvider>
-		</AuthProvider>
+		<>
+			<NavigationContainer ref={navigationRef}>
+				<AuthProvider>
+					<ThemeProvider>
+						<SafeAreaProvider>
+							<NavigationContainer>
+								<RootNavigator />
+							</NavigationContainer>
+						</SafeAreaProvider>
+					</ThemeProvider>
+				</AuthProvider>
+			</NavigationContainer>
+
+			<AssistantOverlay
+				visible={showAssistOverlay}
+				onClose={handleCloseOverlay}
+				onNavigateToChat={handleNavigateToChat}
+			/>
+		</>
 	);
 }
