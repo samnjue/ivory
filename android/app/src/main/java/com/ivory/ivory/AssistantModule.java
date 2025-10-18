@@ -1,7 +1,6 @@
 package com.ivory.ivory;
 
 import android.app.Activity;
-import android.app.RoleManager;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -48,9 +47,10 @@ public class AssistantModule extends ReactContextBaseJavaModule {
 
             Intent intent;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                RoleManager roleManager = (RoleManager) reactContext.getSystemService(RoleManager.class);
-                if (roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
-                    intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT);
+                Object roleManager = reactContext.getSystemService("role");
+                Class<?> roleManagerClass = Class.forName("android.app.RoleManager");
+                if ((boolean) roleManagerClass.getMethod("isRoleAvailable", String.class).invoke(roleManager, "android.app.role.ASSISTANT")) {
+                    intent = (Intent) roleManagerClass.getMethod("createRequestRoleIntent", String.class).invoke(roleManager, "android.app.role.ASSISTANT");
                 } else {
                     promise.reject("ROLE_NOT_AVAILABLE", "Assistant role not available");
                     return;
@@ -70,8 +70,9 @@ public class AssistantModule extends ReactContextBaseJavaModule {
         try {
             boolean isEnabled;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                RoleManager roleManager = (RoleManager) reactContext.getSystemService(RoleManager.class);
-                isEnabled = roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT);
+                Object roleManager = reactContext.getSystemService("role");
+                Class<?> roleManagerClass = Class.forName("android.app.RoleManager");
+                isEnabled = (boolean) roleManagerClass.getMethod("isRoleHeld", String.class).invoke(roleManager, "android.app.role.ASSISTANT");
             } else {
                 String assistComponent = Settings.Secure.getString(
                     reactContext.getContentResolver(),
