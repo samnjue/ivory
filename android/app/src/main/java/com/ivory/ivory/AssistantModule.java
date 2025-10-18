@@ -1,6 +1,7 @@
 package com.ivory.ivory;
 
 import android.app.Activity;
+import android.app.RoleManager;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -45,9 +46,18 @@ public class AssistantModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            String action = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ?
-                Settings.ACTION_ASSISTANT_SETTINGS : Settings.ACTION_VOICE_INPUT_SETTINGS;
-            Intent intent = new Intent(action);
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                RoleManager roleManager = (RoleManager) reactContext.getSystemService(RoleManager.class);
+                if (roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
+                    intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT);
+                } else {
+                    promise.reject("ROLE_NOT_AVAILABLE", "Assistant role not available");
+                    return;
+                }
+            } else {
+                intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+            }
             currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
             promise.resolve(true);
         } catch (Exception e) {
@@ -58,13 +68,18 @@ public class AssistantModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void isAssistantEnabled(Promise promise) {
         try {
-            String assistComponent = Settings.Secure.getString(
-                reactContext.getContentResolver(),
-                "voice_interaction_service"
-            );
-
-            boolean isEnabled = assistComponent != null &&
-                    assistComponent.contains(reactContext.getPackageName());
+            boolean isEnabled;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                RoleManager roleManager = (RoleManager) reactContext.getSystemService(RoleManager.class);
+                isEnabled = roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT);
+            } else {
+                String assistComponent = Settings.Secure.getString(
+                    reactContext.getContentResolver(),
+                    "voice_interaction_service"
+                );
+                isEnabled = assistComponent != null &&
+                        assistComponent.contains(reactContext.getPackageName());
+            }
             promise.resolve(isEnabled);
         } catch (Exception e) {
             promise.reject("ERROR", e.getMessage());
