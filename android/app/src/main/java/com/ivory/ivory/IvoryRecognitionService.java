@@ -1,13 +1,18 @@
 package com.ivory.ivory;
 
 import android.content.Intent;
+import android.os.RemoteException;
 import android.speech.RecognitionService;
 import android.speech.SpeechRecognizer;
 
 public class IvoryRecognitionService extends RecognitionService {
     @Override
     protected void onStartListening(Intent recognizerIntent, Callback callback) {
-        callback.error(SpeechRecognizer.ERROR_NO_MATCH);
+        try {
+            callback.error(SpeechRecognizer.ERROR_NO_MATCH);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
