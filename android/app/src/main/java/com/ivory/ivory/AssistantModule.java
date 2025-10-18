@@ -2,6 +2,7 @@ package com.ivory.ivory;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import androidx.annotation.NonNull;
@@ -44,8 +45,9 @@ public class AssistantModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            // Use a widely supported intent for voice assistant settings
-            Intent intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+            String action = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ?
+                Settings.ACTION_ASSISTANT_SETTINGS : Settings.ACTION_VOICE_INPUT_SETTINGS;
+            Intent intent = new Intent(action);
             currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
             promise.resolve(true);
         } catch (Exception e) {

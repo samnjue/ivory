@@ -5,7 +5,8 @@
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-    <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION"/>
+  <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION"/>
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -44,6 +45,18 @@
         </intent-filter>
         <meta-data android:name="android.voice_interaction"
                   android:resource="@xml/interaction_service" />
+    </service>
+    <!-- Session Service -->
+    <service android:name=".IvoryAssistantSessionService"
+             android:permission="android.permission.BIND_VOICE_INTERACTION"
+             android:exported="true" />
+    <!-- Recognition Service (Dummy) -->
+    <service android:name=".IvoryRecognitionService"
+             android:exported="true">
+        <intent-filter>
+            <action android:name="android.speech.RecognitionService" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
     </service>
   </application>
 </manifest>
