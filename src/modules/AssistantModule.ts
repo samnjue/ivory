@@ -2,6 +2,8 @@ import { NativeModules, NativeEventEmitter, Platform, Alert } from "react-native
 
 console.log("Available Native Modules:", NativeModules);
 console.log("AssistantModule:", NativeModules.AssistantModule);
+
+
 interface AssistantModuleInterface {
 	requestAssistPermission: () => Promise<boolean>;
 	isAssistantEnabled: () => Promise<boolean>;
@@ -9,6 +11,12 @@ interface AssistantModuleInterface {
 }
 
 const { AssistantModule } = NativeModules;
+console.log("AssistantModule keys:", Object.keys(AssistantModule));
+
+(async () => {
+  const enabled = await AssistantModule.isAssistantEnabled();
+  console.log("isAssistantEnabled:", enabled);
+})();
 
 class AssistantAPI {
 	private eventEmitter: NativeEventEmitter | null = null;
