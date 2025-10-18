@@ -17,7 +17,6 @@ public class IvoryAssistantService extends VoiceInteractionService {
         super.onShutdown();
     }
 
-    @Override
     public VoiceInteractionSession onNewSession(Bundle args) {
         return new IvoryAssistantSession(this);
     }
