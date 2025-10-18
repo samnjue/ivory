@@ -5,14 +5,19 @@ import android.os.Bundle;
 import android.service.voice.VoiceInteractionService;
 import android.service.voice.VoiceInteractionSession;
 
-public class IvoryAssistantSessionService extends VoiceInteractionService {
+public class IvoryAssistantService extends VoiceInteractionService {
 
     @Override
     public void onReady() {
         super.onReady();
     }
 
-    // Removed @Override for compatibility
+    @Override
+    public void onShutdown() {
+        super.onShutdown();
+    }
+
+    @Override
     public VoiceInteractionSession onNewSession(Bundle args) {
         return new IvoryAssistantSession(this);
     }

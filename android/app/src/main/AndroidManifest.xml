@@ -45,10 +45,5 @@
         <meta-data android:name="android.voice_interaction"
                   android:resource="@xml/interaction_service" />
     </service>
-    <!-- Voice Interaction Session Service -->
-    <service android:name=".IvoryAssistantSessionService"
-              android:permission="android.permission.BIND_VOICE_INTERACTION"
-              android:exported="true">
-    </service>
   </application>
 </manifest>
