@@ -1,7 +1,6 @@
 import "react-native-gesture-handler";
 import React, { useState, useEffect, useRef } from "react";
 import AssistantOverlay from "./src/components/AssistantOverlay";
-import AssistantModule from "./src/modules/AssistantModule";
 import { NavigationContainer } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
 import {
@@ -23,6 +22,9 @@ import {
   CardStyleInterpolators,
   TransitionSpecs,
 } from "@react-navigation/stack";
+import { DeviceEventEmitter, NativeModules } from 'react-native';
+
+const { AssistantModule } = NativeModules;
 
 const Stack = createStackNavigator();
 SplashScreen.preventAutoHideAsync();
@@ -60,6 +62,7 @@ export default function App() {
   });
 
   const [showAssistOverlay, setShowAssistOverlay] = useState(false);
+  const [isAssistMode, setIsAssistMode] = useState(false);
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
@@ -84,6 +87,7 @@ export default function App() {
       const url = await Linking.getInitialURL();
       if (url && url.includes("showAssistOverlay=true")) {
         setShowAssistOverlay(true);
+        setIsAssistMode(true);
       }
     };
 
@@ -92,23 +96,32 @@ export default function App() {
     const subscription = Linking.addEventListener("url", (event) => {
       if (event.url.includes("showAssistOverlay=true")) {
         setShowAssistOverlay(true);
+        setIsAssistMode(true);
       }
     });
 
-    const assistListener = AssistantModule.addAssistListener(() => {
+    const assistSubscription = DeviceEventEmitter.addListener('onAssistRequested', () => {
       setShowAssistOverlay(true);
+      setIsAssistMode(true);
     });
 
     return () => {
       subscription.remove();
-      if (assistListener) assistListener();
+      assistSubscription.remove();
     };
   }, []);
 
-  const handleCloseOverlay = () => setShowAssistOverlay(false);
+  const handleCloseOverlay = () => {
+    setShowAssistOverlay(false);
+    setIsAssistMode(false);
+    if (isAssistMode) {
+      AssistantModule.finishActivity();
+    }
+  };
 
   const handleNavigateToChat = () => {
     setShowAssistOverlay(false);
+    setIsAssistMode(false);
     if (navigationRef.current) {
       navigationRef.current.navigate("ChatScreen");
     }

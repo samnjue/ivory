@@ -21,7 +21,8 @@ public class IvoryAssistantSession extends VoiceInteractionSession {
         Intent intent = new Intent(getContext(), MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                         Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION);
         intent.putExtra("showAssistOverlay", true);
         getContext().startActivity(intent);
 

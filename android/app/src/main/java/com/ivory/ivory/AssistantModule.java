@@ -61,9 +61,11 @@ public class AssistantModule extends ReactContextBaseJavaModule {
                     return;
                 }
             } else {
-                intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+                // For older Android, open default apps settings (assist is under there)
+                intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
+                // Or use Settings.ACTION_VOICE_INPUT_SETTINGS if you want voice specifically
             }
-            currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
+            currentActivity.startActivity(intent);  // Change to startActivity
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("ERROR", e.getMessage());
@@ -100,5 +102,14 @@ public class AssistantModule extends ReactContextBaseJavaModule {
         reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
             .emit("onAssistRequested", null);
+    }
+
+    @ReactMethod
+    public void finishActivity() {
+        Activity activity = getCurrentActivity();
+        if (activity != null) {
+            activity.finish();
+            activity.overridePendingTransition(0, 0); 
+        }
     }
 }
