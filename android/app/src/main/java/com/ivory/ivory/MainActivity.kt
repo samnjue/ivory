@@ -10,8 +10,8 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
-import com.facebook.react.ReactInstanceManager.ReactInstanceEventListener
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
@@ -21,11 +21,11 @@ class MainActivity : ReactActivity() {
         // Conditionally set transparent theme for assist launches
         val intent = intent
         if (intent != null && (Intent.ACTION_ASSIST == intent.action || intent.getBooleanExtra("showAssistOverlay", false))) {
-            setTheme(R.style.TransparentActivity)  // Use your transparent theme
+            setTheme(R.style.TransparentActivity)
         }
 
         SplashScreenManager.registerOnActivity(this)
-        super.onCreate(savedInstanceState)  // Use savedInstanceState to avoid potential issues
+        super.onCreate(savedInstanceState)
 
         handleAssistIntent(intent)
         setupAssistListener()
@@ -69,18 +69,9 @@ class MainActivity : ReactActivity() {
         val action = intent.action
 
         if (showAssist || Intent.ACTION_ASSIST == action) {
-            val host = getReactNativeHost()
-            if (host == null) {
-                isAssistPending = true
-                return
-            }
-            val instanceManager = getReactInstanceManager()
-            val currentContext = instanceManager.currentReactContext
-
+            val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
             if (currentContext != null) {
-                currentContext
-                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    .emit("onAssistRequested", null)
+                emitAssistEvent(currentContext)
                 isAssistPending = false
             } else {
                 isAssistPending = true
@@ -89,21 +80,24 @@ class MainActivity : ReactActivity() {
     }
 
     private fun setupAssistListener() {
-        val host = getReactNativeHost() ?: return
-        val instanceManager = getReactInstanceManager()
-
-        if (!listenerAdded) {
-            instanceManager.addReactInstanceEventListener(object : ReactInstanceEventListener {
-                override fun onReactContextInitialized(context: ReactContext) {
-                    if (isAssistPending) {
-                        context
-                            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                            .emit("onAssistRequested", null)
-                        isAssistPending = false
+        if (!listenerAdded && reactNativeHost != null) {
+            reactNativeHost?.reactInstanceManager?.addReactInstanceEventListener(
+                object : ReactInstanceEventListener {
+                    override fun onReactContextInitialized(context: ReactContext) {
+                        if (isAssistPending) {
+                            emitAssistEvent(context)
+                            isAssistPending = false
+                        }
                     }
                 }
-            })
+            )
             listenerAdded = true
         }
+    }
+
+    private fun emitAssistEvent(context: ReactContext) {
+        context
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+            ?.emit("onAssistRequested", null)
     }
 }
