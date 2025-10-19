@@ -84,7 +84,7 @@ class MainActivity : ReactActivity() {
         super.invokeDefaultOnBackPressed()
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleAssistIntent(intent)
