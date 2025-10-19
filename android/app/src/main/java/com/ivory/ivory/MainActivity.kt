@@ -14,87 +14,100 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import android.app.ComponentCaller
+import com.facebook.react.bridge.ReactContext
+import com.facebook.react.ReactInstanceEventListener
+import com.facebook.react.ReactInstanceManager
 
 class MainActivity : ReactActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    // Set the theme to AppTheme BEFORE onCreate to support
-    // coloring the background, status bar, and navigation bar.
-    // This is required for expo-splash-screen.
-    // setTheme(R.style.AppTheme);
-    // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
-    SplashScreenManager.registerOnActivity(this)
-    // @generated end expo-splashscreen
-    super.onCreate(null)
-    handleAssistIntent(intent)
-  }
+    private var isAssistPending: Boolean = false
 
-  /**
-   * Returns the name of the main component registered from JavaScript. This is used to schedule
-   * rendering of the component.
-   */
-  override fun getMainComponentName(): String = "main"
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Set the theme to AppTheme BEFORE onCreate to support
+        // coloring the background, status bar, and navigation bar.
+        // This is required for expo-splash-screen.
+        // setTheme(R.style.AppTheme);
+        // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
+        SplashScreenManager.registerOnActivity(this)
+        // @generated end expo-splashscreen
+        super.onCreate(null)
+        handleAssistIntent(intent)
 
-  /**
-   * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
-   * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
-   */
-  override fun createReactActivityDelegate(): ReactActivityDelegate {
-    return ReactActivityDelegateWrapper(
-          this,
-          BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
-          object : DefaultReactActivityDelegate(
-              this,
-              mainComponentName,
-              fabricEnabled
-          ){})
-  }
+        // Add listener for React context initialization
+        reactInstanceManager.addReactInstanceEventListener(object : ReactInstanceEventListener {
+            override fun onReactContextInitialized(context: ReactContext) {
+                if (isAssistPending) {
+                    context
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit("onAssistRequested", null)
+                    isAssistPending = false
+                }
+            }
+        })
+    }
 
-  /**
-    * Align the back button behavior with Android S
-    * where moving root activities to background instead of finishing activities.
-    * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
-    */
-  override fun invokeDefaultOnBackPressed() {
-      if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
-          if (!moveTaskToBack(false)) {
-              // For non-root activities, use the default implementation to finish them.
-              super.invokeDefaultOnBackPressed()
-          }
-          return
-      }
+    /**
+     * Returns the name of the main component registered from JavaScript. This is used to schedule
+     * rendering of the component.
+     */
+    override fun getMainComponentName(): String = "main"
 
-      // Use the default back button implementation on Android S
-      // because it's doing more than [Activity.moveTaskToBack] in fact.
-      super.invokeDefaultOnBackPressed()
-  }
+    /**
+     * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
+     * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
+     */
+    override fun createReactActivityDelegate(): ReactActivityDelegate {
+        return ReactActivityDelegateWrapper(
+            this,
+            BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
+            object : DefaultReactActivityDelegate(
+                this,
+                mainComponentName,
+                fabricEnabled
+            ) {})
+    }
 
-  override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
-      super.onNewIntent(intent, caller)
-      setIntent(intent)
-      handleAssistIntent(intent)
-  }
+    /**
+     * Align the back button behavior with Android S
+     * where moving root activities to background instead of finishing activities.
+     * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
+     */
+    override fun invokeDefaultOnBackPressed() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
+            if (!moveTaskToBack(false)) {
+                // For non-root activities, use the default implementation to finish them.
+                super.invokeDefaultOnBackPressed()
+            }
+            return
+        }
 
-  private fun handleAssistIntent(intent: Intent?) {
-      if (intent != null) {
-          val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
-          val action = intent.action
+        // Use the default back button implementation on Android S
+        // because it's doing more than [Activity.moveTaskToBack] in fact.
+        super.invokeDefaultOnBackPressed()
+    }
 
-          // Check if launched via assist action
-          if (showAssist || Intent.ACTION_ASSIST == action) {
-              // Send event to React Native
-              sendAssistEvent()
-          }
-      }
-  }
+    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
+        super.onNewIntent(intent, caller)
+        setIntent(intent)
+        handleAssistIntent(intent)
+    }
 
-  private fun sendAssistEvent() {
-      // Get the React Instance Manager and send event
-      if (reactNativeHost != null && reactNativeHost.reactInstanceManager != null) {
-          reactNativeHost
-              .reactInstanceManager
-              .currentReactContext
-              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-              ?.emit("onAssistRequested", null)
-      }
-  }
+    private fun handleAssistIntent(intent: Intent?) {
+        if (intent != null) {
+            val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
+            val action = intent.action
+
+            // Check if launched via assist action
+            if (showAssist || Intent.ACTION_ASSIST == action) {
+                // Send event if context is ready, else pend it
+                val currentContext = reactInstanceManager.currentReactContext
+                if (currentContext != null) {
+                    currentContext
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit("onAssistRequested", null)
+                } else {
+                    isAssistPending = true
+                }
+            }
+        }
+    }
 }
