@@ -31,8 +31,8 @@ class MainActivity : ReactActivity() {
         super.onCreate(null)
         handleAssistIntent(intent)
 
-        // Add listener for React context initialization
-        reactInstanceManager.addReactInstanceEventListener(object : ReactInstanceEventListener {
+        val instanceManager = getReactInstanceManager()
+        instanceManager?.addReactInstanceEventListener(object : ReactInstanceEventListener {
             override fun onReactContextInitialized(context: ReactContext) {
                 if (isAssistPending) {
                     context
@@ -42,6 +42,8 @@ class MainActivity : ReactActivity() {
                 }
             }
         })
+
+        handleAssistIntent(intent)
     }
 
     /**
@@ -91,21 +93,21 @@ class MainActivity : ReactActivity() {
     }
 
     private fun handleAssistIntent(intent: Intent?) {
-        if (intent != null) {
-            val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
-            val action = intent.action
+        if (intent == null) return
 
-            // Check if launched via assist action
-            if (showAssist || Intent.ACTION_ASSIST == action) {
-                // Send event if context is ready, else pend it
-                val currentContext = reactInstanceManager.currentReactContext
-                if (currentContext != null) {
-                    currentContext
-                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                        .emit("onAssistRequested", null)
-                } else {
-                    isAssistPending = true
-                }
+        val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
+        val action = intent.action
+
+        if (showAssist || Intent.ACTION_ASSIST == action) {
+            val instanceManager = getReactInstanceManager()
+            val currentContext = instanceManager?.currentReactContext
+
+            if (currentContext != null) {
+                currentContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                    .emit("onAssistRequested", null)
+            } else {
+                isAssistPending = true
             }
         }
     }
