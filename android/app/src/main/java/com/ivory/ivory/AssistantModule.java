@@ -5,7 +5,6 @@ import android.app.role.RoleManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Bundle;
 import android.provider.Settings;
 import androidx.annotation.NonNull;
 
@@ -50,22 +49,16 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             Intent intent;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 RoleManager roleManager = (RoleManager) reactContext.getSystemService(Context.ROLE_SERVICE);
-                if (roleManager == null) {
-                    promise.reject("ROLE_MANAGER_NULL", "RoleManager service not available");
-                    return;
-                }
-                if (roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
+                if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
                     intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT);
                 } else {
-                    promise.reject("ROLE_NOT_AVAILABLE", "Assistant role not available");
-                    return;
+                    // Fallback to voice input settings for compatibility
+                    intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
                 }
             } else {
-                // For older Android, open default apps settings (assist is under there)
-                intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
-                // Or use Settings.ACTION_VOICE_INPUT_SETTINGS if you want voice specifically
+                intent = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
             }
-            currentActivity.startActivity(intent);  // Change to startActivity
+            currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ASSIST);
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("ERROR", e.getMessage());
@@ -78,11 +71,16 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             boolean isEnabled;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 RoleManager roleManager = (RoleManager) reactContext.getSystemService(Context.ROLE_SERVICE);
-                if (roleManager == null) {
-                    promise.reject("ROLE_MANAGER_NULL", "RoleManager service not available");
-                    return;
+                if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT)) {
+                    isEnabled = roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT);
+                } else {
+                    String assistComponent = Settings.Secure.getString(
+                        reactContext.getContentResolver(),
+                        "voice_interaction_service"
+                    );
+                    isEnabled = assistComponent != null &&
+                            assistComponent.contains(reactContext.getPackageName());
                 }
-                isEnabled = roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT);
             } else {
                 String assistComponent = Settings.Secure.getString(
                     reactContext.getContentResolver(),
@@ -109,7 +107,7 @@ public class AssistantModule extends ReactContextBaseJavaModule {
         Activity activity = getCurrentActivity();
         if (activity != null) {
             activity.finish();
-            activity.overridePendingTransition(0, 0); 
+            activity.overridePendingTransition(0, 0);
         }
     }
 }

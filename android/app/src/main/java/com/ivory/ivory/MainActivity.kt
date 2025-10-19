@@ -18,7 +18,6 @@ class MainActivity : ReactActivity() {
     private var listenerAdded: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Conditionally set transparent theme for assist launches
         val intent = intent
         if (intent != null && (Intent.ACTION_ASSIST == intent.action || intent.getBooleanExtra("showAssistOverlay", false))) {
             setTheme(R.style.TransparentActivity)
@@ -88,6 +87,8 @@ class MainActivity : ReactActivity() {
                             emitAssistEvent(context)
                             isAssistPending = false
                         }
+                        // Remove listener after first use to prevent memory leaks
+                        reactNativeHost?.reactInstanceManager?.removeReactInstanceEventListener(this)
                     }
                 }
             )
