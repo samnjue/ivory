@@ -4,6 +4,7 @@ import expo.modules.splashscreen.SplashScreenManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -16,16 +17,19 @@ import com.facebook.react.bridge.ReactContext
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
     private var listenerAdded: Boolean = false
+    private val TAG = "MainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val intent = intent
         if (intent != null && (Intent.ACTION_ASSIST == intent.action || intent.getBooleanExtra("showAssistOverlay", false))) {
+            Log.d(TAG, "Setting transparent theme for assist")
             setTheme(R.style.TransparentActivity)
         }
 
         SplashScreenManager.registerOnActivity(this)
         super.onCreate(savedInstanceState)
 
+        Log.d(TAG, "onCreate called")
         handleAssistIntent(intent)
         setupAssistListener()
     }
@@ -54,9 +58,23 @@ class MainActivity : ReactActivity() {
         super.invokeDefaultOnBackPressed()
     }
 
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume called, isAssistPending: $isAssistPending")
+        if (isAssistPending) {
+            val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
+            if (currentContext != null) {
+                Log.d(TAG, "Emitting from onResume")
+                emitAssistEvent(currentContext)
+                isAssistPending = false
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        Log.d(TAG, "onNewIntent called")
         handleAssistIntent(intent)
         setupAssistListener()
     }
@@ -66,13 +84,17 @@ class MainActivity : ReactActivity() {
 
         val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
         val action = intent.action
+        Log.d(TAG, "Handling assist intent, showAssist: $showAssist, action: $action")
 
         if (showAssist || Intent.ACTION_ASSIST == action) {
             val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
+            Log.d(TAG, "Context available: ${currentContext != null}")
             if (currentContext != null) {
+                Log.d(TAG, "Emitting immediately")
                 emitAssistEvent(currentContext)
                 isAssistPending = false
             } else {
+                Log.d(TAG, "Context null, setting pending")
                 isAssistPending = true
             }
         }
@@ -80,14 +102,16 @@ class MainActivity : ReactActivity() {
 
     private fun setupAssistListener() {
         if (!listenerAdded && reactNativeHost != null) {
+            Log.d(TAG, "Setting up listener")
             reactNativeHost?.reactInstanceManager?.addReactInstanceEventListener(
                 object : ReactInstanceEventListener {
                     override fun onReactContextInitialized(context: ReactContext) {
+                        Log.d(TAG, "Context initialized, isAssistPending: $isAssistPending")
                         if (isAssistPending) {
+                            Log.d(TAG, "Emitting from listener")
                             emitAssistEvent(context)
                             isAssistPending = false
                         }
-                        // Remove listener after first use to prevent memory leaks
                         reactNativeHost?.reactInstanceManager?.removeReactInstanceEventListener(this)
                     }
                 }
@@ -97,6 +121,7 @@ class MainActivity : ReactActivity() {
     }
 
     private fun emitAssistEvent(context: ReactContext) {
+        Log.d(TAG, "Emitting onAssistRequested")
         context
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             ?.emit("onAssistRequested", null)
