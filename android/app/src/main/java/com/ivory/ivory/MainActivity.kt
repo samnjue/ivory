@@ -13,9 +13,8 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import android.app.ComponentCaller
 import com.facebook.react.bridge.ReactContext
-import com.facebook.react.ReactInstanceEventListener
+import com.facebook.react.ReactInstanceManager.ReactInstanceEventListener
 import com.facebook.react.ReactInstanceManager
 
 class MainActivity : ReactActivity() {
@@ -85,8 +84,8 @@ class MainActivity : ReactActivity() {
         super.invokeDefaultOnBackPressed()
     }
 
-    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
-        super.onNewIntent(intent, caller)
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
         setIntent(intent)
         handleAssistIntent(intent)
     }
