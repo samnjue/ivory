@@ -13,12 +13,18 @@ import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
-import com.ivory.ivory.R
+// The explicit import 'com.ivory.ivory.R' is correct, but let's make the theme setting more robust.
+// import com.ivory.ivory.R // Keep this for now, but focus on the fix below.
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
     private var listenerAdded: Boolean = false
     private val TAG = "MainActivity"
+
+    // Helper function to dynamically get the style resource ID
+    private fun getThemeStyleId(themeName: String): Int {
+        return resources.getIdentifier(themeName, "style", packageName)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val intent = intent
@@ -28,11 +34,21 @@ class MainActivity : ReactActivity() {
         
         if (isAssistIntent) {
             Log.d(TAG, "Assist intent detected. Applying AssistOverlay theme.")
-            // Using R.style.Theme_App_AssistOverlay as defined in styles.xml
-            setTheme(R.style.Theme_App_AssistOverlay) 
+            
+            // 💡 FIX: Use dynamic lookup for the Assist Overlay theme
+            val assistThemeId = getThemeStyleId("Theme_App_AssistOverlay")
+            if (assistThemeId != 0) {
+                setTheme(assistThemeId)
+            } else {
+                Log.e(TAG, "FATAL: Theme_App_AssistOverlay not found! Using default AppTheme.")
+                setTheme(R.style.AppTheme) // Fallback for the build system
+            }
         } else {
             // Apply your normal app theme for regular launches
             Log.d(TAG, "Normal launch. Applying default AppTheme.")
+            
+            // 💡 FIX: Use dynamic lookup for the normal AppTheme, or the explicit R.style reference
+            // Sticking with the explicit R.style.AppTheme here should be fine if Theme_App_AssistOverlay was the specific issue.
             setTheme(R.style.AppTheme)
         }
 
@@ -43,6 +59,8 @@ class MainActivity : ReactActivity() {
         handleAssistIntent(intent)
         setupAssistListener()
     }
+
+    // ... (rest of the MainActivity.kt code remains the same) ...
 
     override fun getMainComponentName(): String = "main"
 
@@ -59,8 +77,6 @@ class MainActivity : ReactActivity() {
     }
 
     override fun invokeDefaultOnBackPressed() {
-        // When acting as an overlay, the back button should usually close the overlay.
-        // For assist, we typically want to finish the activity immediately.
         if (intent.action == Intent.ACTION_ASSIST || isAssistPending) {
              Log.d(TAG, "Back pressed on Assist Activity, finishing.")
              finish()
@@ -130,7 +146,6 @@ class MainActivity : ReactActivity() {
                             emitAssistEvent(context)
                             isAssistPending = false
                         }
-                        // Remove the listener after context is ready to prevent memory leaks/re-runs
                         reactNativeHost?.reactInstanceManager?.removeReactInstanceEventListener(this)
                     }
                 }
