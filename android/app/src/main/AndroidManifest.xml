@@ -34,6 +34,18 @@
         <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
         <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
 
+        <!-- Transparent overlay activity for assist gesture -->
+        <activity
+            android:name=".AssistOverlayActivity"
+            android:theme="@style/TransparentActivity"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:exported="false"
+            android:noHistory="true">
+        </activity>
+
+        <!-- Main app activity -->
         <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.App.SplashScreen" 

@@ -13,54 +13,24 @@ import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
-// The explicit import 'com.ivory.ivory.R' is correct, but let's make the theme setting more robust.
-// import com.ivory.ivory.R // Keep this for now, but focus on the fix below.
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
     private var listenerAdded: Boolean = false
     private val TAG = "MainActivity"
-
-    // Helper function to dynamically get the style resource ID
-    private fun getThemeStyleId(themeName: String): Int {
-        return resources.getIdentifier(themeName, "style", packageName)
-    }
+    private var isAssistMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val intent = intent
-        
-        // ⚡️ CRITICAL: Check for assist intent and apply the transparent theme BEFORE super.onCreate()
-        val isAssistIntent = intent?.action == Intent.ACTION_ASSIST || intent?.getBooleanExtra("showAssistOverlay", false)
-        
-        if (isAssistIntent) {
-            Log.d(TAG, "Assist intent detected. Applying AssistOverlay theme.")
-            
-            // 💡 FIX: Use dynamic lookup for the Assist Overlay theme
-            val assistThemeId = getThemeStyleId("Theme_App_AssistOverlay")
-            if (assistThemeId != 0) {
-                setTheme(assistThemeId)
-            } else {
-                Log.e(TAG, "FATAL: Theme_App_AssistOverlay not found! Using default AppTheme.")
-                setTheme(R.style.AppTheme) // Fallback for the build system
-            }
-        } else {
-            // Apply your normal app theme for regular launches
-            Log.d(TAG, "Normal launch. Applying default AppTheme.")
-            
-            // 💡 FIX: Use dynamic lookup for the normal AppTheme, or the explicit R.style reference
-            // Sticking with the explicit R.style.AppTheme here should be fine if Theme_App_AssistOverlay was the specific issue.
-            setTheme(R.style.AppTheme)
-        }
-
+        // Register splash screen before super.onCreate()
         SplashScreenManager.registerOnActivity(this)
         super.onCreate(savedInstanceState)
 
         Log.d(TAG, "onCreate called")
+        
+        val intent = intent
         handleAssistIntent(intent)
         setupAssistListener()
     }
-
-    // ... (rest of the MainActivity.kt code remains the same) ...
 
     override fun getMainComponentName(): String = "main"
 
@@ -77,12 +47,13 @@ class MainActivity : ReactActivity() {
     }
 
     override fun invokeDefaultOnBackPressed() {
-        if (intent.action == Intent.ACTION_ASSIST || isAssistPending) {
-             Log.d(TAG, "Back pressed on Assist Activity, finishing.")
-             finish()
-             return
+        if (isAssistMode) {
+            // In assist mode, back button should close the overlay
+            finish()
+            overridePendingTransition(0, 0)
+            return
         }
-
+        
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
             if (!moveTaskToBack(false)) {
                 super.invokeDefaultOnBackPressed()
@@ -94,7 +65,7 @@ class MainActivity : ReactActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume called, isAssistPending: $isAssistPending")
+        Log.d(TAG, "onResume called, isAssistPending: $isAssistPending, isAssistMode: $isAssistMode")
         if (isAssistPending) {
             val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
             if (currentContext != null) {
@@ -109,6 +80,11 @@ class MainActivity : ReactActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         Log.d(TAG, "onNewIntent called")
+        
+        // Update assist mode
+        isAssistMode = intent != null && (Intent.ACTION_ASSIST == intent.action || 
+                       intent.getBooleanExtra("showAssistOverlay", false))
+        
         handleAssistIntent(intent)
         setupAssistListener()
     }
@@ -159,5 +135,13 @@ class MainActivity : ReactActivity() {
         context
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             ?.emit("onAssistRequested", null)
+    }
+    
+    override fun finish() {
+        super.finish()
+        if (isAssistMode) {
+            // No animation when closing assist overlay
+            overridePendingTransition(0, 0)
+        }
     }
 }

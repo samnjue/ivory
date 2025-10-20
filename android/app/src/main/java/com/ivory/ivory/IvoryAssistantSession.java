@@ -5,8 +5,11 @@ import android.app.assist.AssistStructure;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.voice.VoiceInteractionSession;
 import android.util.Log;
+import android.view.WindowManager;
 
 public class IvoryAssistantSession extends VoiceInteractionSession {
     private static final String TAG = "IvoryAssistantSession";
@@ -14,29 +17,54 @@ public class IvoryAssistantSession extends VoiceInteractionSession {
     public IvoryAssistantSession(Context context) {
         super(context);
         
-        // ⚡️ CRITICAL FIX: Disable the default VoiceInteractionSession window/UI.
-        // We are launching our own MainActivity as the overlay, so we don't need the session's default UI.
-        setUiEnabled(false); 
+        // Disable the default VoiceInteractionSession UI
+        setUiEnabled(false);
         Log.d(TAG, "IvoryAssistantSession initialized and default UI disabled.");
+    }
+
+    @Override
+    public void onShow(Bundle args, int showFlags) {
+        super.onShow(args, showFlags);
+        Log.d(TAG, "onShow called with flags: " + showFlags);
+        
+        // Launch MainActivity as an overlay
+        launchAssistOverlay();
     }
 
     @Override
     public void onHandleAssist(Bundle data, AssistStructure structure, AssistContent content) {
         super.onHandleAssist(data, structure, content);
         Log.d(TAG, "Handling assist");
-
-        // Launch the assist overlay (this intent will trigger the theme change in MainActivity.kt)
-        Intent intent = new Intent(getContext(), MainActivity.class);
+        
+        // Launch MainActivity as an overlay
+        launchAssistOverlay();
+    }
+    
+    private void launchAssistOverlay() {
+        Intent intent = new Intent(getContext(), AssistOverlayActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                         Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                         Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                         Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        intent.putExtra("showAssistOverlay", true);
+                         Intent.FLAG_ACTIVITY_NO_ANIMATION |
+                         Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         intent.setAction(Intent.ACTION_ASSIST);
         getContext().startActivity(intent);
-        Log.d(TAG, "Started MainActivity for overlay");
+        Log.d(TAG, "Started AssistOverlayActivity");
 
-        // Finish the session immediately, as the MainActivity is now responsible for the UI
-        finish();
+        // Finish the session immediately as the overlay activity takes over
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "Finishing session");
+            finish();
+        }, 50);
+    }
+    
+    @Override
+    public void onHide() {
+        super.onHide();
+        Log.d(TAG, "Session hidden");
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "Session destroyed");
     }
 }
