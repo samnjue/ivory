@@ -9,7 +9,7 @@
     android:layout_marginBottom="20dp"
     app:cardCornerRadius="30dp"
     app:cardElevation="8dp"
-    android:backgroundTint="#99000000">
+    app:cardBackgroundColor="#99000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,9 +22,11 @@
             android:id="@+id/closeButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/ripple_background"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:tint="#FFFFFF"
+            android:scaleType="centerInside"
+            android:padding="8dp"
             android:contentDescription="Close" />
 
         <EditText
@@ -48,8 +50,12 @@
             android:layout_height="wrap_content"
             android:text="Open"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#4285f4"
-            android:minWidth="80dp" />
+            android:background="@drawable/button_background"
+            android:minWidth="80dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
 
     </LinearLayout>
 
