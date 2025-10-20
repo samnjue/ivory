@@ -9,7 +9,7 @@
     android:layout_marginBottom="20dp"
     app:cardCornerRadius="30dp"
     app:cardElevation="8dp"
-    app:cardBackgroundColor="#99000000">
+    app:cardBackgroundColor="#99000000"> <!-- Semi-transparent black; adjust for light/dark if needed -->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -50,7 +50,7 @@
             android:layout_height="43dp"
             android:layout_marginStart="8dp">
 
-            <View
+            <FrameLayout
                 android:id="@+id/voiceContainer"
                 android:layout_width="43dp"
                 android:layout_height="43dp"
@@ -62,14 +62,14 @@
                     android:layout_width="38dp"
                     android:layout_height="38dp"
                     android:layout_gravity="center"
-                    android:background="#ffffff18" /> 
+                    android:background="#ffffff18" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ivorystar" />
-            </View>
+                    android:src="@drawable/ivorystar" /> 
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/sendButton"
