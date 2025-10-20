@@ -94,10 +94,13 @@ export default function App() {
 	useEffect(() => {
 		const assistSubscription = DeviceEventEmitter.addListener(
 			"onAssistRequested",
-			() => {
-				console.log("Received onAssistRequested event");
+			(event) => {
+				console.log("Received onAssistRequested event", event);
 				setShowAssistOverlay(true);
 				setIsAssistMode(true);
+				if (event?.query && navigationRef.current) {
+					navigationRef.current.navigate("ChatScreen", { initialQuery: event.query });
+				}
 			}
 		);
 
@@ -144,4 +147,4 @@ export default function App() {
 			/>
 		</>
 	);
-}
+} 

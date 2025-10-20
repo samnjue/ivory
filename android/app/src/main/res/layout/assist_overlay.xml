@@ -15,19 +15,19 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="8dp"
         android:gravity="center_vertical">
 
         <ImageButton
-            android:id="@+id/closeButton"
+            android:id="@+id/paperclipButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/ripple_background"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_paperclip"
             android:tint="#FFFFFF"
             android:scaleType="centerInside"
             android:padding="8dp"
-            android:contentDescription="Close" />
+            android:contentDescription="Attachment" />
 
         <EditText
             android:id="@+id/inputField"
@@ -41,17 +41,47 @@
             android:textSize="16sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:inputType="text"
+            android:inputType="textMultiLine"
+            android:maxLines="5"
             android:imeOptions="actionSend" />
 
-        <Button
-            android:id="@+id/openAppButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Open"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#4285f4"
-            android:minWidth="80dp" />
+        <FrameLayout
+            android:layout_width="43dp"
+            android:layout_height="43dp"
+            android:layout_marginStart="8dp">
+
+            <View
+                android:id="@+id/voiceContainer"
+                android:layout_width="43dp"
+                android:layout_height="43dp"
+                android:background="@drawable/gradient_border"
+                android:clickable="true"
+                android:focusable="true">
+
+                <View
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
+                    android:background="#ffffff18" /> 
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ivorystar" />
+            </View>
+
+            <ImageButton
+                android:id="@+id/sendButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_send"
+                android:tint="#FFFFFF"
+                android:visibility="gone"
+                android:contentDescription="Send" />
+        </FrameLayout>
 
     </LinearLayout>
 

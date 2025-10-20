@@ -253,7 +253,7 @@ export default function SettingsScreen({ navigation }: any) {
             { color: isDark ? "#b9b9b9ff" : "#4B4B4B" },
           ]}
         >
-          Appearance
+          Preferences
         </Text>
         
         <View style={styles.preferenceRow}>

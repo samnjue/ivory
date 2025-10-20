@@ -13,15 +13,17 @@ import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.Arguments
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
     private var listenerAdded: Boolean = false
     private val TAG = "MainActivity"
     private var isAssistMode: Boolean = false
+    private var pendingQuery: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Register splash screen before super.onCreate()
         SplashScreenManager.registerOnActivity(this)
         super.onCreate(savedInstanceState)
 
@@ -48,7 +50,6 @@ class MainActivity : ReactActivity() {
 
     override fun invokeDefaultOnBackPressed() {
         if (isAssistMode) {
-            // In assist mode, back button should close the overlay
             finish()
             overridePendingTransition(0, 0)
             return
@@ -81,7 +82,6 @@ class MainActivity : ReactActivity() {
         setIntent(intent)
         Log.d(TAG, "onNewIntent called")
         
-        // Update assist mode
         isAssistMode = intent != null && (Intent.ACTION_ASSIST == intent.action || 
                        intent.getBooleanExtra("showAssistOverlay", false))
         
@@ -94,7 +94,8 @@ class MainActivity : ReactActivity() {
 
         val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
         val action = intent.action
-        Log.d(TAG, "Handling assist intent, showAssist: $showAssist, action: $action")
+        pendingQuery = intent.getStringExtra("query")
+        Log.d(TAG, "Handling assist intent, showAssist: $showAssist, action: $action, query: $pendingQuery")
 
         if (showAssist || Intent.ACTION_ASSIST == action) {
             val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
@@ -132,15 +133,20 @@ class MainActivity : ReactActivity() {
 
     private fun emitAssistEvent(context: ReactContext) {
         Log.d(TAG, "Emitting onAssistRequested")
+        val params: WritableMap = Arguments.createMap().apply {
+            if (pendingQuery != null) {
+                putString("query", pendingQuery)
+            }
+        }
         context
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            ?.emit("onAssistRequested", null)
+            ?.emit("onAssistRequested", params)
+        pendingQuery = null
     }
     
     override fun finish() {
         super.finish()
         if (isAssistMode) {
-            // No animation when closing assist overlay
             overridePendingTransition(0, 0)
         }
     }
