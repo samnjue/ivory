@@ -21,9 +21,18 @@ class MainActivity : ReactActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val intent = intent
-        if (intent != null && (Intent.ACTION_ASSIST == intent.action || intent.getBooleanExtra("showAssistOverlay", false))) {
-            Log.d(TAG, "Setting transparent theme for assist")
-            setTheme(R.style.TransparentActivity)
+        
+        // ⚡️ CRITICAL: Check for assist intent and apply the transparent theme BEFORE super.onCreate()
+        val isAssistIntent = intent?.action == Intent.ACTION_ASSIST || intent?.getBooleanExtra("showAssistOverlay", false)
+        
+        if (isAssistIntent) {
+            Log.d(TAG, "Assist intent detected. Applying AssistOverlay theme.")
+            // Using R.style.Theme_App_AssistOverlay as defined in styles.xml
+            setTheme(R.style.Theme_App_AssistOverlay) 
+        } else {
+            // Apply your normal app theme for regular launches
+            Log.d(TAG, "Normal launch. Applying default AppTheme.")
+            setTheme(R.style.AppTheme)
         }
 
         SplashScreenManager.registerOnActivity(this)
@@ -49,6 +58,14 @@ class MainActivity : ReactActivity() {
     }
 
     override fun invokeDefaultOnBackPressed() {
+        // When acting as an overlay, the back button should usually close the overlay.
+        // For assist, we typically want to finish the activity immediately.
+        if (intent.action == Intent.ACTION_ASSIST || isAssistPending) {
+             Log.d(TAG, "Back pressed on Assist Activity, finishing.")
+             finish()
+             return
+        }
+
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
             if (!moveTaskToBack(false)) {
                 super.invokeDefaultOnBackPressed()
@@ -112,6 +129,7 @@ class MainActivity : ReactActivity() {
                             emitAssistEvent(context)
                             isAssistPending = false
                         }
+                        // Remove the listener after context is ready to prevent memory leaks/re-runs
                         reactNativeHost?.reactInstanceManager?.removeReactInstanceEventListener(this)
                     }
                 }
