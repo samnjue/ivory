@@ -21,27 +21,18 @@ class MainActivity : ReactActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val intent = intent
-        
-        // ⚡️ CRITICAL FIX: Set the theme BEFORE super.onCreate()
         if (intent != null && (Intent.ACTION_ASSIST == intent.action || intent.getBooleanExtra("showAssistOverlay", false))) {
             Log.d(TAG, "Setting transparent theme for assist")
-            // Apply the fully transparent theme
-            setTheme(R.style.TransparentActivity) 
-        } else {
-            Log.d(TAG, "Setting standard splash theme")
-            // Apply the standard splash screen theme for normal launches
-            setTheme(R.style.Theme_App_SplashScreen) 
+            setTheme(R.style.TransparentActivity)
         }
 
         SplashScreenManager.registerOnActivity(this)
-        super.onCreate(savedInstanceState) // The window is initialized with the theme set above
+        super.onCreate(savedInstanceState)
 
         Log.d(TAG, "onCreate called")
         handleAssistIntent(intent)
         setupAssistListener()
     }
-    
-    // ... (rest of the code remains the same)
 
     override fun getMainComponentName(): String = "main"
 
