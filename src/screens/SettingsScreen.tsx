@@ -11,7 +11,7 @@ import {
 import { TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Edit, UserRoundCog, LogOut, PenLine } from "lucide-react-native";
+import { Edit, UserRoundCog, LogOut, PenLine, ShieldCheck } from "lucide-react-native";
 import SwitchToggle from "react-native-switch-toggle";
 import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,31 +26,36 @@ export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [isDefaultAssistant, setIsDefaultAssistant] = useState(false);
-  const [isFloatingButton, setIsFloatingButton] = useState(false);
+  const [hasOverlayPerm, setHasOverlayPerm] = useState(false);
 
   const backgroundActive = isDark ? "#FFFFFF" : "#000000";
   const backgroundInactive = isDark ? "#6e6e6eff" : "#b6b6b6ff";
   const circleColor = isDark ? "#000000" : "#FFFFFF";
 
   useEffect(() => {
-    checkAssistantStatus();
+    checkPermissions();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
-      checkAssistantStatus();
+      checkPermissions();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  const checkAssistantStatus = async () => {
+  const checkPermissions = async () => {
     try {
-      const enabled = await AssistantModule.isAssistantEnabled();
-      console.log("Assistant enabled status:", enabled);
-      setIsDefaultAssistant(enabled);
+      const assistEnabled = await AssistantModule.isAssistantEnabled();
+      const overlayEnabled = await AssistantModule.hasOverlayPermission();
+      
+      console.log("Assistant enabled:", assistEnabled);
+      console.log("Overlay permission:", overlayEnabled);
+      
+      setIsDefaultAssistant(assistEnabled);
+      setHasOverlayPerm(overlayEnabled);
     } catch (error) {
-      console.error("Error checking assistant status:", error);
+      console.error("Error checking permissions:", error);
     }
   };
 
@@ -68,11 +73,11 @@ export default function SettingsScreen({ navigation }: any) {
               "1. Tap on 'Assist app'\n" +
               "2. Select 'Ivory' from the list\n" +
               "3. Grant any requested permissions\n\n" +
-              "After enabling, long-press the home button to activate Ivory!",
+              "After enabling, swipe up from the home button to activate Ivory!",
           [
             {
               text: "Got it",
-              onPress: () => checkAssistantStatus(),
+              onPress: () => checkPermissions(),
             },
           ]
         );
@@ -82,6 +87,42 @@ export default function SettingsScreen({ navigation }: any) {
     } catch (error) {
       console.error("Error requesting assist permission:", error);
       Alert.alert("Error", "Failed to open assistant settings. Please try again.");
+    }
+  };
+
+  const handleToggleOverlayPermission = async () => {
+    try {
+      if (hasOverlayPerm) {
+        Alert.alert(
+          "Overlay Permission Enabled",
+          "To disable overlay permission, please go to:\n\n" +
+          "Settings > Apps > Ivory > Advanced > Display over other apps",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      const success = await AssistantModule.requestOverlayPermission();
+      if (success) {
+        Alert.alert(
+          "Enable Overlay Permission",
+          "You will be redirected to Android settings. Please:\n\n" +
+          "1. Toggle 'Allow display over other apps' ON\n" +
+          "2. Come back to Ivory\n\n" +
+          "This permission is required for the assistant overlay to appear on top of other apps.",
+          [
+            {
+              text: "Open Settings",
+              onPress: () => {
+                setTimeout(() => checkPermissions(), 1000);
+              },
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error("Error requesting overlay permission:", error);
+      Alert.alert("Error", "Failed to open overlay settings. Please try again.");
     }
   };
 
@@ -117,6 +158,7 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
       </View>
+      
       <View style={styles.profileContainer}>
         <View style={styles.profileImageWrapper}>
           <Image
@@ -139,6 +181,7 @@ export default function SettingsScreen({ navigation }: any) {
           sammynjue10@gmail.com
         </Text>
       </View>
+
       <View style={styles.preferencesContainer}>
         <Text
           style={[
@@ -146,8 +189,10 @@ export default function SettingsScreen({ navigation }: any) {
             { color: isDark ? "#b9b9b9ff" : "#4B4B4B" },
           ]}
         >
-          Preferences
+          Permissions
         </Text>
+
+        {/* Default Assistant Toggle */}
         <View style={styles.preferenceRow}>
           <View style={[styles.preferenceLeft, { left: 9 }]}>
             <UserRoundCog color={colors.text} size={24} />
@@ -168,6 +213,49 @@ export default function SettingsScreen({ navigation }: any) {
             circleStyle={styles.switchCircle}
           />
         </View>
+
+        {/* Overlay Permission Toggle */}
+        <View style={styles.preferenceRow}>
+          <View style={[styles.preferenceLeft, { left: 9 }]}>
+            <ShieldCheck color={colors.text} size={24} />
+            <Text
+              style={[styles.preferenceText, { color: colors.text, left: 5 }]}
+            >
+              Overlay permission
+            </Text>
+          </View>
+          <SwitchToggle
+            switchOn={hasOverlayPerm}
+            onPress={handleToggleOverlayPermission}
+            backgroundColorOn={backgroundActive}
+            backgroundColorOff={backgroundInactive}
+            circleColorOn={circleColor}
+            circleColorOff={circleColor}
+            containerStyle={styles.switchContainer}
+            circleStyle={styles.switchCircle}
+          />
+        </View>
+
+        <Text
+          style={[
+            styles.helperText,
+            { color: isDark ? "#999999" : "#666666" },
+          ]}
+        >
+          Both permissions are required for the assistant overlay to work properly.
+        </Text>
+      </View>
+
+      <View style={styles.preferencesContainer}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#b9b9b9ff" : "#4B4B4B" },
+          ]}
+        >
+          Appearance
+        </Text>
+        
         <View style={styles.preferenceRow}>
           <View style={styles.preferenceLeft}>
             <LinearGradient
@@ -193,8 +281,10 @@ export default function SettingsScreen({ navigation }: any) {
             </Text>
           </View>
           <SwitchToggle
-            switchOn={isFloatingButton}
-            onPress={() => setIsFloatingButton((prev) => !prev)}
+            switchOn={false}
+            onPress={() => {
+              Alert.alert("Coming Soon", "Floating button feature is coming soon!");
+            }}
             backgroundColorOn={backgroundActive}
             backgroundColorOff={backgroundInactive}
             circleColorOn={circleColor}
@@ -204,6 +294,7 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </View>
       </View>
+
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={() => supabase.auth.signOut()}
@@ -296,6 +387,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "RedRose_500Medium",
     marginLeft: 10,
+  },
+  helperText: {
+    fontSize: 12,
+    fontFamily: "RedRose_400Regular",
+    marginTop: 5,
+    marginLeft: 9,
+    lineHeight: 18,
   },
   miniGradientBorder: {
     width: 43,
