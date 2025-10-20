@@ -50,12 +50,8 @@
             android:layout_height="wrap_content"
             android:text="Open"
             android:textColor="#FFFFFF"
-            android:background="@drawable/button_background"
-            android:minWidth="80dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
+            android:backgroundTint="#4285f4"
+            android:minWidth="80dp" />
 
     </LinearLayout>
 
