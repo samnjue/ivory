@@ -3,4 +3,17 @@
   <color name="iconBackground">#ffffff</color>
   <color name="colorPrimary">#023c69</color>
   <color name="colorPrimaryDark">#ffffff</color>
+  <!-- Light mode overlay -->
+  <color name="overlay_light">#66FFFFFF</color> 
+  <!-- Dark mode overlay -->
+  <color name="overlay_dark">#80151515</color>  
+  <!-- Gradient colors for mic icon -->
+  <color name="gradient_pink">#FF6B9D</color>
+  <color name="gradient_purple">#9C7EFF</color>
+  <color name="gradient_cyan">#4ECDC4</color>  
+  <!-- Text colors -->
+  <color name="text_light">#333333</color>
+  <color name="text_dark">#FFFFFF</color>
+  <color name="hint_light">#888888</color>
+  <color name="hint_dark">#AAAAAA</color>
 </resources>

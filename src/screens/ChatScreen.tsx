@@ -336,7 +336,7 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 			"keyboardDidShow",
 			() => {
 				setKeyboardVisible(true);
-				inputBarTranslateY.value = withSpring(-25, {
+				inputBarTranslateY.value = withSpring(-15, {
 					damping: 20,
 					stiffness: 100,
 				});
@@ -662,7 +662,7 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 						]}
 						pointerEvents={inputText.length === 0 ? "none" : "auto"}
 					>
-						<TouchableOpacity>
+						<TouchableOpacity onPress={handleSend}>
 							<SendHorizontal size={26} color={colors.text} />
 						</TouchableOpacity>
 					</Animated.View>
