@@ -8,18 +8,12 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.BlurMaskFilter
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -32,8 +26,6 @@ import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
-import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
 
 class SystemOverlayManager : Service() {
     private val TAG = "SystemOverlayManager"
@@ -194,7 +186,7 @@ class SystemOverlayManager : Service() {
     }
 
     private fun applyTheme() {
-        val overlayCard = overlayView?.findViewById<CardView>(R.id.overlayCard)
+        val overlayContainer = overlayView?.findViewById<View>(R.id.overlayContainer)
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
@@ -204,14 +196,12 @@ class SystemOverlayManager : Service() {
 
         if (isDarkMode) {
             // Dark mode: #151515 with 50% opacity
-            overlayCard?.setCardBackgroundColor(Color.parseColor("#80151515"))
             inputField?.setTextColor(Color.WHITE)
             inputField?.setHintTextColor(Color.parseColor("#AAAAAA"))
             paperclipButton?.setColorFilter(Color.WHITE)
             sendButton?.setColorFilter(Color.WHITE)
         } else {
             // Light mode: White with 40% opacity
-            overlayCard?.setCardBackgroundColor(Color.parseColor("#66FFFFFF"))
             inputField?.setTextColor(Color.parseColor("#333333"))
             inputField?.setHintTextColor(Color.parseColor("#888888"))
             paperclipButton?.setColorFilter(Color.parseColor("#333333"))
