@@ -98,6 +98,13 @@ class SystemOverlayManager : Service() {
 
         overlayView = LayoutInflater.from(this).inflate(R.layout.assist_overlay, null)
 
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val overlayWidth = (screenWidth * 0.85).toInt()
+        val horizontalMargin = (screenWidth * 0.075).toInt()
+        
+        overlayView?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
+
         layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -123,13 +130,10 @@ class SystemOverlayManager : Service() {
             layoutParams?.blurBehindRadius = 25
         }
 
-        // Apply theme-based styling
         applyTheme()
 
-        // Setup keyboard handling
         setupKeyboardListener()
 
-        // Find views
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val micContainer = overlayView?.findViewById<View>(R.id.micContainer)
@@ -139,7 +143,6 @@ class SystemOverlayManager : Service() {
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
         micGradientCircle = overlayView?.findViewById(R.id.micGradientCircle)
 
-        // Setup text watcher for input
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
