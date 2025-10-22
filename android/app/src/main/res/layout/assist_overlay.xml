@@ -4,69 +4,79 @@
     android:id="@+id/overlayContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
-    android:layout_marginEnd="16dp"
-    android:layout_marginBottom="20dp"
-    android:background="@drawable/overlay_background"
-    android:elevation="8dp">
+    android:paddingStart="7.5%"
+    android:paddingEnd="7.5%"
+    android:layout_marginBottom="20dp">
     
-    <LinearLayout
+    <FrameLayout
+        android:id="@+id/overlayCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:gravity="center_vertical">
-
-        <ImageButton
-            android:id="@+id/paperclipButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_paperclip"
-            android:scaleType="centerInside"
-            android:padding="8dp"
-            android:contentDescription="Attachment" />
-
-        <EditText
-            android:id="@+id/inputField"
-            android:layout_width="0dp"
+        android:background="@drawable/overlay_background"
+        android:elevation="8dp">
+        
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:hint="Ask anything"
-            android:textSize="16sp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:inputType="textMultiLine"
-            android:maxLines="5"
-            android:fontFamily="@font/red_rose"
-            android:imeOptions="actionSend" />
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical">
 
-        <FrameLayout
-            android:layout_width="43dp"
-            android:layout_height="43dp"
-            android:layout_marginStart="8dp">
+            <ImageButton
+                android:id="@+id/paperclipButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_paperclip"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:contentDescription="Attachment" />
 
-            <!-- Voice/Mic Container with gradient border -->
+            <EditText
+                android:id="@+id/inputField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Ask anything"
+                android:textSize="16sp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:inputType="textMultiLine"
+                android:maxLines="5"
+                android:fontFamily="@font/red_rose"
+                android:imeOptions="actionSend" />
+
+            <!-- Mic button -->
             <FrameLayout
-                android:id="@+id/voiceContainer"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/gradient_border"
+                android:id="@+id/micContainer"
+                android:layout_width="43dp"
+                android:layout_height="43dp"
+                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true">
 
-                <!-- Blur effect layer (visible when listening) -->
+                <!-- Gradient circle background -->
+                <ImageView
+                    android:id="@+id/micGradientCircle"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/gradient_circle"
+                    android:visibility="gone"
+                    android:alpha="0" />
+
+                <!-- Blur layer for glow effect -->
                 <ImageView
                     android:id="@+id/micBlurLayer"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_mic"
                     android:alpha="0"
                     android:visibility="gone" />
 
-                <!-- Main mic icon with gradient -->
+                <!-- Main mic icon -->
                 <ImageView
                     android:id="@+id/micIcon"
                     android:layout_width="24dp"
@@ -75,18 +85,39 @@
                     android:src="@drawable/ic_mic" />
             </FrameLayout>
 
-            <!-- Send button (visible when text is entered) -->
-            <ImageButton
-                android:id="@+id/sendButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_send"
-                android:visibility="gone"
-                android:contentDescription="Send" />
-        </FrameLayout>
+            <!-- Ivory star button / Send button container -->
+            <FrameLayout
+                android:layout_width="43dp"
+                android:layout_height="43dp">
 
-    </LinearLayout>
+                <!-- Ivory star button -->
+                <FrameLayout
+                    android:id="@+id/voiceContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/gradient_border"
+                    android:clickable="true"
+                    android:focusable="true">
 
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ivorystar" />
+                </FrameLayout>
+
+                <!-- Send button -->
+                <ImageButton
+                    android:id="@+id/sendButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_send"
+                    android:visibility="gone"
+                    android:contentDescription="Send" />
+            </FrameLayout>
+
+        </LinearLayout>
+    </FrameLayout>
 </FrameLayout>

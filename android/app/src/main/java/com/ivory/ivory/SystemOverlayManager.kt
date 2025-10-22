@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -21,6 +22,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.view.animation.AnimationUtils
 import android.widget.EditText
@@ -36,8 +38,12 @@ class SystemOverlayManager : Service() {
     
     private var micIcon: ImageView? = null
     private var micBlurLayer: ImageView? = null
+    private var micGradientCircle: ImageView? = null
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
+    
+    private var originalY = 0
+    private var layoutParams: WindowManager.LayoutParams? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -92,7 +98,7 @@ class SystemOverlayManager : Service() {
 
         overlayView = LayoutInflater.from(this).inflate(R.layout.assist_overlay, null)
 
-        val params = WindowManager.LayoutParams(
+        layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -106,24 +112,32 @@ class SystemOverlayManager : Service() {
             PixelFormat.TRANSLUCENT
         )
 
-        params.gravity = Gravity.BOTTOM
-        params.y = 20
+        layoutParams?.apply {
+            gravity = Gravity.BOTTOM
+            y = 20
+            originalY = y
+        }
         
         // Enable blur behind for Android 12+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            params.blurBehindRadius = 25 // 5dp blur converted to pixels roughly
+            layoutParams?.blurBehindRadius = 25
         }
 
         // Apply theme-based styling
         applyTheme()
 
+        // Setup keyboard handling
+        setupKeyboardListener()
+
         // Find views
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
+        val micContainer = overlayView?.findViewById<View>(R.id.micContainer)
         val voiceContainer = overlayView?.findViewById<View>(R.id.voiceContainer)
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
         micIcon = overlayView?.findViewById(R.id.micIcon)
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
+        micGradientCircle = overlayView?.findViewById(R.id.micGradientCircle)
 
         // Setup text watcher for input
         inputField?.addTextChangedListener(object : TextWatcher {
@@ -146,9 +160,9 @@ class SystemOverlayManager : Service() {
             Log.d(TAG, "Paperclip clicked - attachment functionality")
         }
 
-        // Voice button click - start listening animation
-        voiceContainer?.setOnClickListener {
-            Log.d(TAG, "Voice button clicked")
+        // Mic button click - start listening animation
+        micContainer?.setOnClickListener {
+            Log.d(TAG, "Mic button clicked")
             if (!isListening) {
                 startListeningAnimation()
                 // Auto-stop after 5 seconds
@@ -156,9 +170,15 @@ class SystemOverlayManager : Service() {
                     stopListeningAnimation()
                 }, 5000)
             } else {
-                openMainApp(null)
-                hideOverlay()
+                stopListeningAnimation()
             }
+        }
+
+        // Ivory star button click
+        voiceContainer?.setOnClickListener {
+            Log.d(TAG, "Voice button clicked")
+            openMainApp(null)
+            hideOverlay()
         }
 
         // Send button click
@@ -181,12 +201,54 @@ class SystemOverlayManager : Service() {
             }
         }
 
-        windowManager?.addView(overlayView, params)
+        windowManager?.addView(overlayView, layoutParams)
         Log.d(TAG, "Overlay view added to window manager")
     }
 
+    private fun setupKeyboardListener() {
+        overlayView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            private var isKeyboardShowing = false
+            
+            override fun onGlobalLayout() {
+                val rect = Rect()
+                overlayView?.getWindowVisibleDisplayFrame(rect)
+                val screenHeight = overlayView?.rootView?.height ?: 0
+                val keypadHeight = screenHeight - rect.bottom
+
+                if (keypadHeight > screenHeight * 0.15) {
+                    // Keyboard is showing
+                    if (!isKeyboardShowing) {
+                        isKeyboardShowing = true
+                        adjustOverlayForKeyboard(keypadHeight)
+                    }
+                } else {
+                    // Keyboard is hidden
+                    if (isKeyboardShowing) {
+                        isKeyboardShowing = false
+                        resetOverlayPosition()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun adjustOverlayForKeyboard(keyboardHeight: Int) {
+        layoutParams?.let { params ->
+            params.y = keyboardHeight + 20
+            windowManager?.updateViewLayout(overlayView, params)
+            Log.d(TAG, "Adjusted overlay for keyboard: y=${params.y}")
+        }
+    }
+
+    private fun resetOverlayPosition() {
+        layoutParams?.let { params ->
+            params.y = originalY
+            windowManager?.updateViewLayout(overlayView, params)
+            Log.d(TAG, "Reset overlay position: y=${params.y}")
+        }
+    }
+
     private fun applyTheme() {
-        val overlayContainer = overlayView?.findViewById<View>(R.id.overlayContainer)
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
@@ -195,17 +257,19 @@ class SystemOverlayManager : Service() {
                          Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         if (isDarkMode) {
-            // Dark mode: #151515 with 50% opacity
+            // Dark mode
             inputField?.setTextColor(Color.WHITE)
             inputField?.setHintTextColor(Color.parseColor("#AAAAAA"))
             paperclipButton?.setColorFilter(Color.WHITE)
             sendButton?.setColorFilter(Color.WHITE)
+            micIcon?.setColorFilter(Color.WHITE)
         } else {
-            // Light mode: White with 40% opacity
+            // Light mode
             inputField?.setTextColor(Color.parseColor("#333333"))
             inputField?.setHintTextColor(Color.parseColor("#888888"))
             paperclipButton?.setColorFilter(Color.parseColor("#333333"))
             sendButton?.setColorFilter(Color.parseColor("#333333"))
+            micIcon?.setColorFilter(Color.parseColor("#333333"))
         }
     }
 
@@ -213,25 +277,33 @@ class SystemOverlayManager : Service() {
         isListening = true
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                // Show gradient version
-                icon.setImageResource(R.drawable.ic_mic_gradient)
-                
-                // Show and animate blur layer
-                blur.visibility = View.VISIBLE
-                val isDarkMode = (resources.configuration.uiMode and 
-                                 Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                blur.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
-                
-                val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
-                blur.startAnimation(fadeIn)
-                blur.alpha = 0.6f
-                
-                // Start pulse animation
-                val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
-                icon.startAnimation(pulseAnim)
-                blur.startAnimation(pulseAnim)
-                
-                Log.d(TAG, "Started listening animation")
+                micGradientCircle?.let { gradient ->
+                    // Show gradient circle
+                    gradient.visibility = View.VISIBLE
+                    gradient.alpha = 1.0f
+                    
+                    // Remove color filter for white icon
+                    icon.clearColorFilter()
+                    icon.setColorFilter(Color.WHITE)
+                    
+                    // Show and animate blur layer
+                    blur.visibility = View.VISIBLE
+                    blur.setColorFilter(Color.WHITE)
+                    
+                    val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+                    blur.startAnimation(fadeIn)
+                    blur.alpha = 0.5f
+                    
+                    // Start pulse animations
+                    val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
+                    val gradientPulse = AnimationUtils.loadAnimation(this, R.anim.gradient_pulse)
+                    
+                    icon.startAnimation(pulseAnim)
+                    blur.startAnimation(pulseAnim)
+                    gradient.startAnimation(gradientPulse)
+                    
+                    Log.d(TAG, "Started listening animation")
+                }
             }
         }
     }
@@ -242,26 +314,32 @@ class SystemOverlayManager : Service() {
         
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                // Clear animations
-                icon.clearAnimation()
-                blur.clearAnimation()
-                
-                // Fade out blur layer
-                val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-                fadeOut.fillAfter = true
-                blur.startAnimation(fadeOut)
-                
-                // Delay hiding blur layer and resetting icon
-                Handler(Looper.getMainLooper()).postDelayed({
-                    blur.visibility = View.GONE
-                    // Reset to normal white/dark icon based on theme
-                    icon.setImageResource(R.drawable.ic_mic)
-                    val isDarkMode = (resources.configuration.uiMode and 
-                                     Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                    icon.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
-                }, 300)
-                
-                Log.d(TAG, "Stopped listening animation")
+                micGradientCircle?.let { gradient ->
+                    // Clear animations
+                    icon.clearAnimation()
+                    blur.clearAnimation()
+                    gradient.clearAnimation()
+                    
+                    // Fade out blur layer and gradient
+                    val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+                    fadeOut.fillAfter = true
+                    blur.startAnimation(fadeOut)
+                    gradient.startAnimation(fadeOut)
+                    
+                    // Delay hiding elements and resetting icon
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        blur.visibility = View.GONE
+                        gradient.visibility = View.GONE
+                        gradient.alpha = 0f
+                        
+                        // Reset to normal icon based on theme
+                        val isDarkMode = (resources.configuration.uiMode and 
+                                         Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                        icon.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
+                    }, 300)
+                    
+                    Log.d(TAG, "Stopped listening animation")
+                }
             }
         }
     }
@@ -275,7 +353,9 @@ class SystemOverlayManager : Service() {
         }
         micIcon = null
         micBlurLayer = null
+        micGradientCircle = null
         isListening = false
+        layoutParams = null
         stopSelf()
     }
 
