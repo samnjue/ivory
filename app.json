@@ -34,10 +34,10 @@
           "image": "./assets/icons/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#EDEBFF",
           "dark": {
             "image": "./assets/icons/splash-icon.png",
-            "backgroundColor": "#000000"
+            "backgroundColor": "#00000D"
           }
         }
       ],
@@ -45,8 +45,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9e11245c-f55e-4020-9410-800cfface3a1"
+        "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
       }
-    }
+    },
+    "owner": "ivorydevz"
   }
 }

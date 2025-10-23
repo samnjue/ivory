@@ -1,3 +1,5 @@
 <resources>
   <color name="splashscreen_background">#000000</color>
+  <!-- Dark overlay -->
+  <color name="assistant_overlay_bg">#00000D</color>
 </resources>

@@ -22,7 +22,9 @@ import {
 	CardStyleInterpolators,
 	TransitionSpecs,
 } from "@react-navigation/stack";
-import { DeviceEventEmitter, NativeModules, Platform } from "react-native";
+import { DeviceEventEmitter, NativeModules, Platform, useColorScheme } from "react-native";
+import * as SystemUi from "expo-system-ui";
+import { COLORS } from "./src/constants/colors";
 
 const { AssistantModule } = NativeModules;
 
@@ -87,9 +89,23 @@ export default function App() {
 		return () => sub.remove();
 	}, []);
 
+	const colorScheme = useColorScheme();
+	const isDark = colorScheme === "dark";
+	const colors = isDark ? COLORS.dark : COLORS.light;
+
 	useEffect(() => {
-		if (fontsLoaded) SplashScreen.hideAsync();
-	}, [fontsLoaded]);
+		async function prepareApp() {
+			try {
+				await SystemUi.setBackgroundColorAsync(isDark ? "#00000D" : "#EDEBFF");
+			} catch (e) {
+				console.warn(e);
+			} finally {
+				if (fontsLoaded) {
+					SplashScreen.hideAsync();
+				}
+			}
+		}
+	}, [fontsLoaded, isDark]);
 
 	useEffect(() => {
 		const assistSubscription = DeviceEventEmitter.addListener(
