@@ -17,5 +17,5 @@
   <color name="hint_light">#888888</color>
   <color name="hint_dark">#AAAAAA</color>
   <!-- Overlay background -->
-  <color name="assistant_overlay_bg">#EDEBFF</color>
+  <color name="assistant_overlay_bg">#EDEBFF08</color>
 </resources>

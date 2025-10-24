@@ -108,15 +108,15 @@ class SystemOverlayManager : Service() {
 
         // ---------- Layout params ----------
         layoutParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                    or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                    or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            PixelFormat.TRANSLUCENT
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+        PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             y = 20
@@ -129,6 +129,9 @@ class SystemOverlayManager : Service() {
         }
 
         wm?.addView(overlayRoot, layoutParams)
+        overlayRoot?.post {
+        overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
+        }
 
         // ---------- UI refs ----------
         micIcon = overlayRoot?.findViewById(R.id.micIcon)
@@ -177,10 +180,13 @@ class SystemOverlayManager : Service() {
         // ---------- Outside touch → dismiss ----------
         overlayRoot?.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) {
+                Log.d(TAG, "Outside touch detected, hiding overlay")
                 hideOverlay()
                 true
             } else false
         }
+        
+        wm?.addView(overlayRoot, layoutParams)
 
         // ---------- Slide-in animation ----------
         overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
@@ -228,18 +234,33 @@ class SystemOverlayManager : Service() {
     // ---------- Dismiss ----------
     private fun hideOverlay() {
         overlayRoot?.let {
+            Log.d(TAG, "Hiding overlay with animation")
             val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down)
             slideDown.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
-                    wm?.removeView(it)
-                    overlayRoot = null
-                    stopSelf()
+                    try {
+                        wm?.removeView(it)
+                        overlayRoot = null
+                        micIcon = null
+                        micStroke = null
+                        voiceContainer = null
+                        sendButton = null
+                        inputField = null
+                        layoutParams = null
+                        stopSelf()
+                        Log.d(TAG, "Overlay removed and service stopped")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error removing overlay: ${e.message}")
+                    }
                 }
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
             it.startAnimation(slideDown)
-        } ?: stopSelf()
+        } ?: run {
+            Log.d(TAG, "Overlay already null, stopping service")
+            stopSelf()
+        }
     }
 
     private fun openMainApp(query: String?) {
