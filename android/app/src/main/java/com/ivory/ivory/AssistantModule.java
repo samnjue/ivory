@@ -178,13 +178,12 @@ public class AssistantModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void finishActivity() {
-        Activity activity = getCurrentActivity();
-        if (activity != null) {
-            Log.d(TAG, "Finishing activity");
-            activity.finish();
-            activity.overridePendingTransition(0, 0);
-        } else {
-            Log.e(TAG, "No activity to finish");
-        }
+        Log.d(TAG, "finishActivity called");
+        Intent intent = new Intent(getReactApplicationContext(), SystemOverlayManager.class);
+        getReactApplicationContext().stopService(intent);
+        // Finish any running AssistOverlayActivity
+        Intent activityIntent = new Intent(getReactApplicationContext(), AssistOverlayActivity.class);
+        activityIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        getReactApplicationContext().stopActivity(activityIntent);
     }
 }
