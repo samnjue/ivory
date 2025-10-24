@@ -249,6 +249,10 @@ class SystemOverlayManager : Service() {
         waveformView?.visibility = View.VISIBLE
         waveformView?.setListening(true)
 
+        // Bounce animation
+        val bounce = AnimationUtils.loadAnimation(this, R.anim.bounce)
+        micContainer?.startAnimation(bounce)
+
         val pulse = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
         micStroke?.startAnimation(pulse)
 
