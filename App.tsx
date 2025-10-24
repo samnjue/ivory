@@ -22,7 +22,12 @@ import {
 	CardStyleInterpolators,
 	TransitionSpecs,
 } from "@react-navigation/stack";
-import { DeviceEventEmitter, NativeModules, Platform, useColorScheme } from "react-native";
+import {
+	DeviceEventEmitter,
+	NativeModules,
+	Platform,
+	useColorScheme,
+} from "react-native";
 import * as SystemUi from "expo-system-ui";
 import { COLORS } from "./src/constants/colors";
 
@@ -112,11 +117,16 @@ export default function App() {
 			"onAssistRequested",
 			(event) => {
 				console.log("Received onAssistRequested event", event);
-				setShowAssistOverlay(true);
-				setIsAssistMode(true);
-				if (event?.query && navigationRef.current) {
-					navigationRef.current.navigate("ChatScreen", { initialQuery: event.query });
-				}
+				// Delay to allow native animation to start
+				setTimeout(() => {
+					setShowAssistOverlay(true);
+					setIsAssistMode(true);
+					if (event?.query && navigationRef.current) {
+						navigationRef.current.navigate("ChatScreen", {
+							initialQuery: event.query,
+						});
+					}
+				}, 100); // Adjusted delay to match slide_up animation (400ms)
 			}
 		);
 
@@ -163,4 +173,4 @@ export default function App() {
 			/>
 		</>
 	);
-} 
+}
