@@ -55,6 +55,8 @@ class SystemOverlayManager : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var originalY = 0
 
+    private var waveformView: WaveformView? = null
+
     // ---------- Service lifecycle ----------
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -191,6 +193,8 @@ class SystemOverlayManager : Service() {
 
         // ---------- Slide-in animation ----------
         overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
+
+        waveformView = overlayRoot?.findViewById(R.id.waveformView)
     }
 
     private fun setupKeyboardListener() {
@@ -239,14 +243,15 @@ class SystemOverlayManager : Service() {
     // ---------- Listening animation ----------
     private fun startListeningAnimation() {
         isListening = true
-        micIcon?.setImageResource(R.drawable.ic_mic_active)          // white stroke
+        micIcon?.setImageResource(R.drawable.ic_mic_active)
         micIcon?.setColorFilter(Color.WHITE)
-
         micStroke?.visibility = View.VISIBLE
+        waveformView?.visibility = View.VISIBLE
+        waveformView?.setListening(true)
+
         val pulse = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
         micStroke?.startAnimation(pulse)
 
-        // Auto-stop after 5 s
         handler.postDelayed({ stopListeningAnimation() }, 5000)
     }
 
@@ -255,7 +260,9 @@ class SystemOverlayManager : Service() {
         isListening = false
         micStroke?.clearAnimation()
         micStroke?.visibility = View.GONE
-        applyTheme() // restore theme-based colour
+        waveformView?.visibility = View.GONE
+        waveformView?.setListening(false)
+        applyTheme()
     }
 
     // ---------- Theme ----------
