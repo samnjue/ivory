@@ -132,6 +132,7 @@ class SystemOverlayManager : Service() {
         overlayRoot?.post {
         overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
         }
+        setupKeyboardListener()
 
         // ---------- UI refs ----------
         micIcon = overlayRoot?.findViewById(R.id.micIcon)
@@ -190,6 +191,49 @@ class SystemOverlayManager : Service() {
 
         // ---------- Slide-in animation ----------
         overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
+    }
+
+    private fun setupKeyboardListener() {
+        overlayRoot?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            private var isKeyboardShowing = false
+
+            override fun onGlobalLayout() {
+                val rect = Rect()
+                overlayRoot?.getWindowVisibleDisplayFrame(rect)
+                val screenHeight = overlayRoot?.rootView?.height ?: 0
+                val keypadHeight = screenHeight - rect.bottom
+
+                if (keypadHeight > screenHeight * 0.15) {
+                    // Keyboard is showing
+                    if (!isKeyboardShowing) {
+                        isKeyboardShowing = true
+                        adjustOverlayForKeyboard(keypadHeight)
+                    }
+                } else {
+                    // Keyboard is hidden
+                    if (isKeyboardShowing) {
+                        isKeyboardShowing = false
+                        resetOverlayPosition()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun adjustOverlayForKeyboard(keyboardHeight: Int) {
+        layoutParams?.let { params ->
+            params.y = keyboardHeight + 20
+            wm?.updateViewLayout(overlayRoot, params)
+            Log.d(TAG, "Adjusted overlay for keyboard: y=${params.y}")
+        }
+    }
+
+    private fun resetOverlayPosition() {
+        layoutParams?.let { params ->
+            params.y = originalY
+            wm?.updateViewLayout(overlayRoot, params)
+            Log.d(TAG, "Reset overlay position: y=${params.y}")
+        }
     }
 
     // ---------- Listening animation ----------
