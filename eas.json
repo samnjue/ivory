@@ -12,7 +12,15 @@
           "disabled": true
         },
         "gradleCommand": ":app:assembleDebug",
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleProperties": {
+          "org.gradle.jvmargs": "-Xmx4g -XX:+HeapDumpOnOutOfMemoryError",
+          "android.enableJetifier": true,
+          "android.useAndroidX": true
+        },
+        "env": {
+          "GRADLE_OPTS": "-Xmx4g -Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g"
+        }
       }
     },
     "preview": {
