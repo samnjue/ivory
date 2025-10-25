@@ -286,6 +286,28 @@ class SystemOverlayManager : Service() {
         micIcon?.setColorFilter(iconColor)
     }
 
+    private fun setupInputField() {
+        inputField?.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val hasText = !s.isNullOrEmpty()
+                if (hasText && voiceContainer?.visibility == View.VISIBLE) {
+                    voiceContainer?.startAnimation(AnimationUtils.loadAnimation(this@SystemOverlayManager, R.anim.fade_out))
+                    voiceContainer?.visibility = View.GONE
+                    sendButton?.visibility = View.VISIBLE
+                    sendButton?.startAnimation(AnimationUtils.loadAnimation(this@SystemOverlayManager, R.anim.fade_in))
+                } else if (!hasText && voiceContainer?.visibility == View.GONE) {
+                    sendButton?.startAnimation(AnimationUtils.loadAnimation(this@SystemOverlayManager, R.anim.fade_out))
+                    sendButton?.visibility = View.GONE
+                    voiceContainer?.visibility = View.VISIBLE
+                    voiceContainer?.startAnimation(AnimationUtils.loadAnimation(this@SystemOverlayManager, R.anim.fade_in))
+                }
+                if (hasText && isListening) stopListeningAnimation()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
     // ---------- Dismiss ----------
     private fun hideOverlay() {
         overlayRoot?.let {
