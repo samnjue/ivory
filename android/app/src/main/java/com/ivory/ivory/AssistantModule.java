@@ -118,6 +118,24 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             promise.reject("ERROR", e.getMessage());
         }
     }
+
+    @ReactMethod
+    public void requestMicrophonePermission(Promise promise) {
+        if (ContextCompat.checkSelfPermission(getReactApplicationContext(), android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            promise.resolve(true);
+        } else {
+            if (getCurrentActivity() != null) {
+                ActivityCompat.requestPermissions(
+                    getCurrentActivity(),
+                    new String[]{android.Manifest.permission.RECORD_AUDIO},
+                    REQUEST_MIC_PERMISSION
+                );
+                promise.resolve(false);
+            } else {
+                promise.reject("NO_ACTIVITY", "No activity available to request permission");
+            }
+        }
+    }
     
     @ReactMethod
     public void hasOverlayPermission(Promise promise) {

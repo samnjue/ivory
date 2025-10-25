@@ -130,6 +130,12 @@ class SystemOverlayManager : Service() {
             layoutParams?.blurBehindRadius = 30
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Log.e(TAG, "Overlay permission not granted")
+            stopSelf()
+            return
+        }
+
         wm?.addView(overlayRoot, layoutParams)
         overlayRoot?.post {
         overlayRoot?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_up))
@@ -338,6 +344,65 @@ class SystemOverlayManager : Service() {
             Log.d(TAG, "Overlay already null, stopping service")
             stopSelf()
         }
+    }
+
+    private fun startVoiceRecognition() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Microphone permission not granted")
+            return
+        }
+        val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+
+        val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+        try {
+            val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            speechRecognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onResults(results: Bundle?) {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        inputField?.setText(matches[0])
+                        sendQueryToReactNative(matches[0])
+                    }
+                    stopListeningAnimation()
+                }
+                override fun onPartialResults(partialResults: Bundle?) {
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        inputField?.setText(matches[0])
+                    }
+                }
+                override fun onError(error: Int) {
+                    Log.e(TAG, "Speech recognition error: $error")
+                    stopListeningAnimation()
+                }
+                // ... (implement other required methods)
+                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() {}
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+            speechRecognizer.startListening(recognizerIntent)
+            startListeningAnimation()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting speech recognition: ${e.message}")
+            stopListeningAnimation()
+        }
+    }
+
+    private fun sendQueryToReactNative(query: String) {
+        val intent = Intent("com.ivory.ivory.ASSIST_REQUESTED")
+        intent.putExtra("query", query)
+        sendBroadcast(intent)
     }
 
     private fun openMainApp(query: String?) {
