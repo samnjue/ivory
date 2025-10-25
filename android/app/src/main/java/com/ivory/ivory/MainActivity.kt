@@ -1,20 +1,19 @@
 package com.ivory.ivory
 
-import expo.modules.splashscreen.SplashScreenManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
-import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import expo.modules.ReactActivityDelegateWrapper
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.Arguments
+import expo.modules.ReactActivityDelegateWrapper
+import expo.modules.splashscreen.SplashScreenManager
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
@@ -43,7 +42,7 @@ class MainActivity : ReactActivity() {
             object : DefaultReactActivityDelegate(
                 this,
                 mainComponentName,
-                fabricEnabled
+                DefaultNewArchitectureEntryPoint.fabricEnabled
             ) {}
         )
     }
@@ -77,27 +76,26 @@ class MainActivity : ReactActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
+    override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        setIntent(intent)
-        Log.d(TAG, "onNewIntent called")
-        
-        isAssistMode = intent != null && (Intent.ACTION_ASSIST == intent.action || 
-                       intent.getBooleanExtra("showAssistOverlay", false))
-        
-        handleAssistIntent(intent)
-        setupAssistListener()
+        intent?.let {
+            setIntent(it)
+            Log.d(TAG, "onNewIntent called")
+            isAssistMode = it.action == Intent.ACTION_ASSIST || it.getBooleanExtra("showAssistOverlay", false)
+            handleAssistIntent(it)
+            setupAssistListener()
+        }
     }
 
     private fun handleAssistIntent(intent: Intent?) {
-        if (intent == null) return
+        intent ?: return
 
         val showAssist = intent.getBooleanExtra("showAssistOverlay", false)
         val action = intent.action
         pendingQuery = intent.getStringExtra("query")
         Log.d(TAG, "Handling assist intent, showAssist: $showAssist, action: $action, query: $pendingQuery")
 
-        if (showAssist || Intent.ACTION_ASSIST == action) {
+        if (showAssist || action == Intent.ACTION_ASSIST) {
             val currentContext = reactNativeHost?.reactInstanceManager?.currentReactContext
             Log.d(TAG, "Context available: ${currentContext != null}")
             if (currentContext != null) {
@@ -115,7 +113,7 @@ class MainActivity : ReactActivity() {
         if (!listenerAdded && reactNativeHost != null) {
             Log.d(TAG, "Setting up listener")
             reactNativeHost?.reactInstanceManager?.addReactInstanceEventListener(
-                object : ReactInstanceEventListener {
+                object : com.facebook.react.ReactInstanceEventListener {
                     override fun onReactContextInitialized(context: ReactContext) {
                         Log.d(TAG, "Context initialized, isAssistPending: $isAssistPending")
                         if (isAssistPending) {
@@ -134,9 +132,7 @@ class MainActivity : ReactActivity() {
     private fun emitAssistEvent(context: ReactContext) {
         Log.d(TAG, "Emitting onAssistRequested")
         val params: WritableMap = Arguments.createMap().apply {
-            if (pendingQuery != null) {
-                putString("query", pendingQuery)
-            }
+            pendingQuery?.let { putString("query", it) }
         }
         context
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
