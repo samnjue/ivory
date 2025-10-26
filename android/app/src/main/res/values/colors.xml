@@ -1,8 +1,8 @@
 <resources>
-  <color name="splashscreen_background">#ffffff</color>
+  <color name="splashscreen_background">#EDEBFF</color>
   <color name="iconBackground">#ffffff</color>
   <color name="colorPrimary">#023c69</color>
-  <color name="colorPrimaryDark">#ffffff</color>
+  <color name="colorPrimaryDark">#EDEBFF</color>
   <!-- Light mode overlay -->
   <color name="overlay_light">#66FFFFFF</color> 
   <!-- Dark mode overlay -->
@@ -18,4 +18,5 @@
   <color name="hint_dark">#AAAAAA</color>
   <!-- Overlay background -->
   <color name="assistant_overlay_bg">#EDEBFF08</color>
+  <color name="colorPrimaryDark">#EDEBFF</color>
 </resources>

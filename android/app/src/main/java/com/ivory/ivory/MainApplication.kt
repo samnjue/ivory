@@ -2,12 +2,17 @@ package com.ivory.ivory
 
 import android.app.Application
 import android.content.res.Configuration
+
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
+import com.facebook.react.ReactHost
+import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactNativeHost
+
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
@@ -16,11 +21,10 @@ class MainApplication : Application(), ReactApplication {
     override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
         this,
         object : DefaultReactNativeHost(this) {
-            override fun getPackages(): List<ReactPackage> {
-                val packages = PackageList(this).packages.toMutableList()
-                packages.add(AssistantPackage())
-                return packages
-            }
+            override fun getPackages(): List<ReactPackage> =
+                PackageList(this).packages.apply {
+                    add(AssistantPackage()) 
+                }
 
             override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
 
@@ -30,16 +34,20 @@ class MainApplication : Application(), ReactApplication {
         }
     )
 
+    override val reactHost: ReactHost
+        get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
+
     override fun onCreate() {
         super.onCreate()
+
         DefaultNewArchitectureEntryPoint.releaseLevel = try {
-            DefaultNewArchitectureEntryPoint.ReleaseLevel.valueOf(
-                BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase()
-            )
+            ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase()) 
         } catch (e: IllegalArgumentException) {
-            DefaultNewArchitectureEntryPoint.ReleaseLevel.STABLE
+            ReleaseLevel.STABLE
         }
-        DefaultNewArchitectureEntryPoint.load()
+        
+        loadReactNative(this) 
+        
         ApplicationLifecycleDispatcher.onApplicationCreate(this)
     }
 

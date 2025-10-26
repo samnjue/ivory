@@ -40,7 +40,7 @@ class WaveformView @JvmOverloads constructor(
         override fun run() {
             phase += 0.1f
             invalidate()
-            postDelayed(this, 16) // ~60fps
+            postDelayed(this, 16) 
         }
     }
 
@@ -49,7 +49,6 @@ class WaveformView @JvmOverloads constructor(
 
         if (!isListening) return
 
-        // Gradient similar to ChatScreen
         paint.shader = LinearGradient(
             0f, 0f, width.toFloat(), height.toFloat(),
             intArrayOf(Color.parseColor("#4285f4"), Color.parseColor("#6ea8fe")),

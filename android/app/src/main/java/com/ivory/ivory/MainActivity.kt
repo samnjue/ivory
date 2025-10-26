@@ -1,19 +1,22 @@
 package com.ivory.ivory
 
-import android.content.Intent
+import expo.modules.splashscreen.SplashScreenManager
+
+import android.content.Intent 
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.util.Log 
+
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
-import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled 
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.facebook.react.bridge.ReactContext
-import com.facebook.react.bridge.WritableMap
-import com.facebook.react.bridge.Arguments
+
+import com.facebook.react.modules.core.DeviceEventManagerModule 
+import com.facebook.react.bridge.ReactContext 
+import com.facebook.react.bridge.WritableMap 
+import com.facebook.react.bridge.Arguments 
 import expo.modules.ReactActivityDelegateWrapper
-import expo.modules.splashscreen.SplashScreenManager
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
@@ -24,10 +27,9 @@ class MainActivity : ReactActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         SplashScreenManager.registerOnActivity(this)
-        super.onCreate(savedInstanceState)
+        super.onCreate(null)
 
         Log.d(TAG, "onCreate called")
-        
         val intent = intent
         handleAssistIntent(intent)
         setupAssistListener()
@@ -42,9 +44,8 @@ class MainActivity : ReactActivity() {
             object : DefaultReactActivityDelegate(
                 this,
                 mainComponentName,
-                DefaultNewArchitectureEntryPoint.fabricEnabled
-            ) {}
-        )
+                fabricEnabled
+            ){})
     }
 
     override fun invokeDefaultOnBackPressed() {
@@ -53,13 +54,14 @@ class MainActivity : ReactActivity() {
             overridePendingTransition(0, 0)
             return
         }
-        
+
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
             if (!moveTaskToBack(false)) {
                 super.invokeDefaultOnBackPressed()
             }
             return
         }
+
         super.invokeDefaultOnBackPressed()
     }
 
@@ -81,7 +83,7 @@ class MainActivity : ReactActivity() {
         intent?.let {
             setIntent(it)
             Log.d(TAG, "onNewIntent called")
-            isAssistMode = it.action == Intent.ACTION_ASSIST || it.getBooleanExtra("showAssistOverlay", false)
+            isAssistMode = it.action == Intent.ACTION_ASSIST || it.getBooleanExtra("showAssistOverlay", false) 
             handleAssistIntent(it)
             setupAssistListener()
         }
