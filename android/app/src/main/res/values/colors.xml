@@ -18,5 +18,4 @@
   <color name="hint_dark">#AAAAAA</color>
   <!-- Overlay background -->
   <color name="assistant_overlay_bg">#EDEBFF08</color>
-  <color name="colorPrimaryDark">#EDEBFF</color>
 </resources>
