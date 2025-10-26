@@ -1,64 +1,64 @@
-{
-  "expo": {
-    "name": "ivory",
-    "slug": "ivory",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icons/adaptive-icon.png",
-    "userInterfaceStyle": "automatic",
-    "scheme": "ivory",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+  {
+    "expo": {
+      "name": "ivory",
+      "slug": "ivory",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/icons/adaptive-icon.png",
+      "userInterfaceStyle": "automatic",
+      "scheme": "ivory",
+      "newArchEnabled": true,
+      "ios": {
+        "supportsTablet": true
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": true,
-      "softwareKeyboardLayoutMode": "pan",
-      "package": "com.ivory.ivory"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      [
-        "expo-font"
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/icons/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#EDEBFF",
-          "dark": {
+      "android": {
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/icons/adaptive-icon.png",
+          "backgroundColor": "#ffffff"
+        },
+        "edgeToEdgeEnabled": true,
+        "predictiveBackGestureEnabled": true,
+        "softwareKeyboardLayoutMode": "pan",
+        "package": "com.ivory.ivory"
+      },
+      "web": {
+        "favicon": "./assets/favicon.png"
+      },
+      "plugins": [
+        [
+          "expo-font"
+        ],
+        [
+          "expo-splash-screen",
+          {
             "image": "./assets/icons/splash-icon.png",
-            "backgroundColor": "#00000D"
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#EDEBFF",
+            "dark": {
+              "image": "./assets/icons/splash-icon.png",
+              "backgroundColor": "#00000D"
+            }
           }
-        }
+        ],
+        "expo-secure-store",
+        [
+          "expo-build-properties",
+          {
+            "android": {
+              "compileSdkVersion": 36,
+              "targetSdkVersion": 36,
+              "buildToolsVersion": "36.0.0",
+              "gradleCommand": ":app:assembleDebug",
+            }
+          }
+        ]
       ],
-      "expo-secure-store",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "34.0.0",
-            "gradleCommand": ":app:assembleDebug",
-          }
+      "extra": {
+        "eas": {
+          "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
         }
-      ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
-      }
-    },
-    "owner": "ivorydevz"
+      },
+      "owner": "ivorydevz"
+    }
   }
-}
