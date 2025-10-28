@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<voice-interaction-service
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:sessionService="com.ivory.ivory.IvoryAssistantSessionService"
-    android:recognitionService="com.ivory.ivory.IvoryRecognitionService"
-    android:supportsAssist="true"
-    android:supportsLaunchVoiceAssistFromKeyguard="true"/>

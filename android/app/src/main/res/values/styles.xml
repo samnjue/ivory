@@ -11,29 +11,4 @@
     <item name="postSplashScreenTheme">@style/AppTheme</item>
     <item name="android:windowSplashScreenBehavior">icon_preferred</item>
   </style>
-  <style name="TransparentActivity" parent="Theme.AppCompat.NoActionBar">
-    <!-- Make the window background transparent -->
-    <item name="android:windowBackground">@android:color/transparent</item>
-    <item name="android:windowIsTranslucent">true</item>
-    <item name="android:windowNoTitle">true</item>
-    <item name="android:windowContentOverlay">@null</item>
-    
-    <!-- Disable all animations -->
-    <item name="android:windowAnimationStyle">@null</item>
-    <item name="android:activityOpenEnterAnimation">@null</item>
-    <item name="android:activityOpenExitAnimation">@null</item>
-    <item name="android:activityCloseEnterAnimation">@null</item>
-    <item name="android:activityCloseExitAnimation">@null</item>
-    
-    <!-- Overlay behavior -->
-    <item name="android:windowIsFloating">false</item>
-    <item name="android:backgroundDimEnabled">false</item>
-    
-    <!-- Show over lockscreen if needed -->
-    <item name="android:windowShowWallpaper">true</item>
-    
-    <!-- Status bar transparency -->
-    <item name="android:statusBarColor">@android:color/transparent</item>
-    <item name="android:navigationBarColor">@android:color/transparent</item>
-  </style>
 </resources>
