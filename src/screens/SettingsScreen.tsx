@@ -311,7 +311,7 @@ export default function SettingsScreen({ navigation }: any) {
             { color: isDark ? "#999999" : "#666666" },
           ]}
         >
-          Both permissions are required for the assistant overlay to work properly.
+          All three permissions are required for the assistant overlay to work properly.
         </Text>
       </View>
 

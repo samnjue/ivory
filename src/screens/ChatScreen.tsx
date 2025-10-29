@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
 		zIndex: 20,
 		elevation: 20,
 		shadowColor: "#000000",
-		borderWidth: 0.15,
+		borderWidth: 0.07,
 		borderColor: "#7a7a7aff",
 	},
 	inputButton: {
