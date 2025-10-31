@@ -28,5 +28,27 @@
         <data android:scheme="exp+ivory"/>
       </intent-filter>
     </activity>
+    <!-- Overlay service -->
+    <service
+        android:name=".assistant.AssistantOverlayService"
+        android:exported="false"
+        android:foregroundServiceType="specialUse"
+        android:permission="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Voice-Interaction entry point -->
+    <service
+        android:name=".assistant.AssistantVoiceInteractionService"
+        android:exported="true"
+        android:permission="android.permission.BIND_VOICE_INTERACTION">
+        <meta-data
+            android:name="android.voice_interaction"
+            android:resource="@xml/voice_interaction" />
+        <intent-filter>
+            <action android:name="android.service.voice.VoiceInteractionService" />
+        </intent-filter>
+    </service>    
+    <!-- Make the app selectable as default assistant in Settings -->
+    <meta-data
+        android:name="com.android.settings.ASSISTANT"
+        android:resource="@xml/assistant_settings" />  
   </application>
 </manifest>

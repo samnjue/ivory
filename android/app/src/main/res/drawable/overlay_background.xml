@@ -32,7 +32,7 @@
         android:bottom="1dp">
         <shape android:shape="rectangle">
             <corners android:radius="29dp" />
-            <solid android:color="#323131" /> <!-- Semi-transparent dark background -->
+            <solid android:color="@color/overlay_card_background_light" />
         </shape>
     </item>
 </layer-list>
