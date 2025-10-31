@@ -5,7 +5,9 @@
     android:id="@+id/rootOverlay"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/assistant_overlay_bg">
+    android:background="@android:color/transparent"
+    android:layout_marginBottom="22dp"
+    >
 
     <FrameLayout
         android:id="@+id/overlayCard"

@@ -1,13 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 1. Shadow (darker) -->
+    <item
+        android:top="2dp"
+        android:left="2dp"
+        android:right="2dp"
+        android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="30dp"/>
+            <solid android:color="#18000000"/>
+        </shape>
+    </item>
+
+    <!-- 2. Gradient border (same as light) -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="30dp"/>
+            <gradient
+                android:startColor="#e63946"
+                android:endColor="#4285f4"
+                android:angle="45"/>
+            <stroke
+                android:width="1.2dp"
+                android:color="#7a7a7a"/>
+        </shape>
+    </item>
+
+    <!-- 3. Inner semi-transparent dark -->
     <item
         android:top="1dp"
         android:left="1dp"
         android:right="1dp"
         android:bottom="1dp">
         <shape android:shape="rectangle">
-            <corners android:radius="29dp" />
-            <solid android:color="@color/overlay_card_background_dark" />
+            <corners android:radius="29dp"/>
+            <solid android:color="#80000000"/>   <!-- 50% opaque black -->
         </shape>
     </item>
+
 </layer-list>
