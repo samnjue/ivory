@@ -4,6 +4,13 @@
     <font
         android:fontStyle="normal"
         android:fontWeight="400"
+        android:font="@font/red_rose_light"
+        app:fontStyle="normal"
+        app:fontWeight="400"
+        app:font="@font/red_rose_regular" />
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="400"
         android:font="@font/red_rose_regular"
         app:fontStyle="normal"
         app:fontWeight="400"
