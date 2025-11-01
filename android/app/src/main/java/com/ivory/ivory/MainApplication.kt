@@ -12,6 +12,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactNativeHost
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
+import com.facebook.soloader.SoLoader 
 
 class MainApplication : Application(), ReactApplication {
 
@@ -35,13 +36,14 @@ class MainApplication : Application(), ReactApplication {
     override fun onCreate() {
         super.onCreate()
 
+        SoLoader.init(this, false)
+
         DefaultNewArchitectureEntryPoint.releaseLevel = try {
             ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
         } catch (e: IllegalArgumentException) {
             ReleaseLevel.STABLE
         }
 
-        loadReactNative(this)
         ApplicationLifecycleDispatcher.onApplicationCreate(this)
     }
 
