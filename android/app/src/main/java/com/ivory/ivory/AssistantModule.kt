@@ -24,4 +24,15 @@ class AssistantModule(reactContext: ReactApplicationContext) :
         }
         reactApplicationContext.startActivity(intent)
     }
+
+    @ReactMethod
+    fun requestAssistantRole() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = reactApplicationContext.getSystemService(android.app.role.RoleManager::class.java)
+            if (roleManager?.isRoleAvailable(android.app.role.RoleManager.ROLE_ASSISTANT) == true) {
+                val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_ASSISTANT)
+                reactApplicationContext.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }
+    }
 }
