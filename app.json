@@ -60,8 +60,6 @@
           "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
         }
       },
-      "owner": "ivorydevz",
-      "jsEngine": "hermes",
-      "entryPoint": "./src/overlay-entry.tsx"
+      "owner": "ivorydevz"
     }
   }
