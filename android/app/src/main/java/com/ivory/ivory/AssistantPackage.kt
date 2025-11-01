@@ -6,7 +6,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
 
 class AssistantPackage : ReactPackage {
-    override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
+    override fun createNativeModules(reactContext: ReactApplicationContext) =
         listOf(AssistantModule(reactContext))
 
     override fun createViewManagers(reactContext: ReactApplicationContext) = emptyList<ViewManager<*, *>>()
