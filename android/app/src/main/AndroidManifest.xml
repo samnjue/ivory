@@ -55,6 +55,14 @@
         android:exported="false"
         android:foregroundServiceType="mediaProjection"
         />
+    <service
+        android:name=".SystemOverlayService"
+        android:foregroundServiceType="specialUse"
+        android:exported="false">
+        <property
+            android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+            android:value="assistant_overlay" />
+    </service>
     <activity
         android:name=".PillOverlayActivity"
         android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
