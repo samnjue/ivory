@@ -11,56 +11,48 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
+  withSpring,
 } from "react-native-reanimated";
 import { Paperclip, SendHorizontal } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../constants/colors";
 import { useColorScheme } from "react-native";
+import { NativeModules } from "react-native";
 
 const { width } = Dimensions.get("window");
+const { Assistant } = NativeModules;
 
-export default function OverlayInputBar({
-  onSend,
-  onIvoryStar,
-}: {
-  onSend: (text: string) => void;
-  onIvoryStar: () => void;
-}) {
+export default function OverlayInputBar() {
   const isDark = useColorScheme() === "dark";
   const colors = isDark ? COLORS.dark : COLORS.light;
 
   const [text, setText] = useState("");
-  const [kbVisible, setKbVisible] = useState(false);
 
   const translateY = useSharedValue(0);
-  const voiceOpacity = useSharedValue(1);
+  const starOpacity = useSharedValue(1);
   const sendOpacity = useSharedValue(0);
   const sendScale = useSharedValue(0);
 
+  // Keyboard lift
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => {
-      setKbVisible(true);
       translateY.value = withSpring(-25);
     });
     const hide = Keyboard.addListener("keyboardDidHide", () => {
-      setKbVisible(false);
       translateY.value = withSpring(0);
     });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
+  // Swap ivory-star to Send
   useEffect(() => {
     if (text) {
-      voiceOpacity.value = withTiming(0, { duration: 150 });
+      starOpacity.value = withTiming(0, { duration: 150 });
       sendOpacity.value = withTiming(1, { duration: 150 });
       sendScale.value = withSpring(1);
     } else {
-      voiceOpacity.value = withTiming(1, { duration: 150 });
+      starOpacity.value = withTiming(1, { duration: 150 });
       sendOpacity.value = withTiming(0, { duration: 150 });
       sendScale.value = withSpring(0);
     }
@@ -70,14 +62,22 @@ export default function OverlayInputBar({
     transform: [{ translateY: translateY.value }],
   }));
 
-  const voiceStyle = useAnimatedStyle(() => ({
-    opacity: voiceOpacity.value,
-  }));
-
+  const starStyle = useAnimatedStyle(() => ({ opacity: starOpacity.value }));
   const sendStyle = useAnimatedStyle(() => ({
     opacity: sendOpacity.value,
     transform: [{ scale: sendScale.value }],
   }));
+
+  const handleSend = () => {
+    if (text.trim()) {
+      Assistant.sendText(text.trim());
+      setText("");
+    }
+  };
+
+  const handleIvoryStar = () => {
+    Assistant.openMainApp();
+  };
 
   return (
     <Animated.View style={[styles.bar, barStyle]}>
@@ -94,9 +94,9 @@ export default function OverlayInputBar({
         multiline
       />
 
-      {/* Ivory-star (always visible) */}
-      <Animated.View style={[styles.voiceContainer, voiceStyle]}>
-        <TouchableOpacity onPress={onIvoryStar}>
+      {/* Ivory-star (visible when no text) */}
+      <Animated.View style={[styles.rightBtn, starStyle]}>
+        <TouchableOpacity onPress={handleIvoryStar}>
           <LinearGradient
             colors={["#e63946", "#4285f4"]}
             start={{ x: 0, y: 0 }}
@@ -104,18 +104,15 @@ export default function OverlayInputBar({
             style={styles.gradientBorder}
           >
             <View style={styles.innerLogo}>
-              <Image
-                source={require("../assets/ivorystar.png")}
-                style={styles.logo}
-              />
+              <Image source={require("../../assets/ivorystar.png")} style={styles.logo} />
             </View>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Send button */}
-      <Animated.View style={[styles.sendContainer, sendStyle]}>
-        <TouchableOpacity onPress={() => { onSend(text); setText(""); }}>
+      {/* Send (visible when text) */}
+      <Animated.View style={[styles.rightBtn, sendStyle]}>
+        <TouchableOpacity onPress={handleSend}>
           <SendHorizontal size={26} color={colors.text} />
         </TouchableOpacity>
       </Animated.View>
@@ -142,8 +139,7 @@ const styles = StyleSheet.create({
   },
   clipBtn: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
   input: { flex: 1, fontSize: 16, paddingHorizontal: 12, maxHeight: 120 },
-  voiceContainer: { position: "absolute", right: 8, bottom: 8 },
-  sendContainer: { position: "absolute", right: 12, bottom: 12 },
+  rightBtn: { position: "absolute", right: 8, bottom: 8 },
   gradientBorder: { width: 43, height: 43, borderRadius: 22, justifyContent: "center", alignItems: "center" },
   innerLogo: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#151515", justifyContent: "center", alignItems: "center" },
   logo: { width: 24, height: 24 },

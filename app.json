@@ -19,7 +19,8 @@
         "edgeToEdgeEnabled": true,
         "predictiveBackGestureEnabled": true,
         "softwareKeyboardLayoutMode": "pan",
-        "package": "com.ivory.ivory"
+        "package": "com.ivory.ivory",
+        "jsEngine": "hermes"
       },
       "web": {
         "favicon": "./assets/favicon.png"
@@ -59,6 +60,8 @@
           "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
         }
       },
-      "owner": "ivorydevz"
+      "owner": "ivorydevz",
+      "jsEngine": "hermes",
+      "entryPoint": "./src/overlay-entry.tsx"
     }
   }
