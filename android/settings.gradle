@@ -1,20 +1,30 @@
 pluginManagement {
-  def reactNativeGradlePlugin = new File(
+  def reactNativeGradlePluginPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+      commandLine(
+        "node",
+        "--print",
+        "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"
+      )
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
-  includeBuild(reactNativeGradlePlugin)
-  
-  def expoPluginsPath = new File(
+
+  includeBuild(reactNativeGradlePluginPath)
+
+  def expoGradlePluginPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+      commandLine(
+        "node",
+        "--print",
+        "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })"
+      )
     }.standardOutput.asText.get().trim(),
     "../android/expo-gradle-plugin"
   ).absolutePath
-  includeBuild(expoPluginsPath)
+
+  includeBuild(expoGradlePluginPath)
 }
 
 plugins {
@@ -22,18 +32,19 @@ plugins {
   id("expo-autolinking-settings")
 }
 
-extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
-    ex.autolinkLibrariesFromCommand()
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ext ->
+  if (System.getenv("EXPO_USE_COMMUNITY_AUTOLINKING") == "1") {
+    ext.autolinkLibrariesFromCommand()
   } else {
-    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    ext.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
   }
 }
+
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'ivory'
+rootProject.name = "ivory"
 
-expoAutolinking.useExpoVersionCatalog()
+apply from: file("../node_modules/react-native-gradle-plugin/package.gradle")
+applyNativeModulesSettingsGradle(settings)
 
-include ':app'
-includeBuild(expoAutolinking.reactNativeGradlePlugin)
+include(":app")
