@@ -4,6 +4,9 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -47,6 +50,18 @@
         </intent-filter>
     </service>    
     <!-- Make the app selectable as default assistant in Settings -->
+    <service
+        android:name=".AssistantService"
+        android:exported="false"
+        android:foregroundServiceType="mediaProjection"
+        />
+    <activity
+        android:name=".PillOverlayActivity"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
+        android:excludeFromRecents="true"
+        android:exported="false"
+        android:taskAffinity="">
+    </activity>
     <meta-data
         android:name="com.android.settings.ASSISTANT"
         android:resource="@xml/assistant_settings" />  
