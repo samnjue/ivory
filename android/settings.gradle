@@ -44,7 +44,4 @@ expoAutolinking.useExpoModules()
 
 rootProject.name = "ivory"
 
-apply from: file("../node_modules/react-native-gradle-plugin/package.gradle")
-applyNativeModulesSettingsGradle(settings)
-
 include(":app")
