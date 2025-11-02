@@ -1,22 +1,15 @@
 package com.ivory.ivory
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.facebook.react.modules.core.PermissionAwareActivity
-import com.facebook.react.modules.core.PermissionListener
 
 class AssistantModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext), PermissionListener {
-
-    private val MICROPHONE_REQUEST_CODE = 1001
-    private var micPromise: Promise? = null
+    ReactContextBaseJavaModule(reactContext) {
 
     override fun getName() = "AssistantModule"
 
@@ -72,40 +65,29 @@ class AssistantModule(reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun requestMicrophonePermission(promise: Promise) {
-        val currentActivity = currentActivity
-        if (currentActivity == null) {
-            promise.reject("ACTIVITY_NULL", "Current activity is null")
-            return
+        try {
+            val context = reactApplicationContext
+            
+            // Check if permission is already granted
+            val isGranted = ContextCompat.checkSelfPermission(
+                context, 
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            
+            if (isGranted) {
+                promise.resolve(true)
+            } else {
+                // Open app settings for manual permission grant
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                promise.resolve(false)
+            }
+        } catch (e: Exception) {
+            promise.reject("MICROPHONE_ERROR", e)
         }
-
-        if (ContextCompat.checkSelfPermission(reactApplicationContext, Manifest.permission.RECORD_AUDIO) 
-            == PackageManager.PERMISSION_GRANTED) {
-            promise.resolve(true)
-            return
-        }
-
-        micPromise = promise
-        val permissionAwareActivity = currentActivity as? PermissionAwareActivity
-        permissionAwareActivity?.requestPermissions(
-            arrayOf(Manifest.permission.RECORD_AUDIO),
-            MICROPHONE_REQUEST_CODE,
-            this
-        ) ?: promise.reject("PERMISSION_ERROR", "Activity is not PermissionAwareActivity")
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>?,
-        grantResults: IntArray?
-    ): Boolean {
-        if (requestCode == MICROPHONE_REQUEST_CODE) {
-            val granted = grantResults?.isNotEmpty() == true && 
-                         grantResults[0] == PackageManager.PERMISSION_GRANTED
-            micPromise?.resolve(granted)
-            micPromise = null
-            return true
-        }
-        return false
     }
 
     @ReactMethod
