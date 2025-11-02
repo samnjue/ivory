@@ -3,7 +3,4 @@
   <color name="iconBackground">#ffffff</color>
   <color name="colorPrimary">#023c69</color>
   <color name="colorPrimaryDark">#EDEBFF</color>
-  <color name="assistant_overlay_bg">#40000000</color>
-  <color name="overlay_card_background_light">#EFEFEF</color>
-  <color name="icon_tint_light">#DE000000</color>
 </resources>

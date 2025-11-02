@@ -4,10 +4,6 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-  <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -32,65 +28,5 @@
         <data android:scheme="exp+ivory"/>
       </intent-filter>
     </activity>
-    <!-- Overlay service -->
-    <service
-        android:name=".assistant.AssistantOverlayService"
-        android:exported="false"
-        android:foregroundServiceType="specialUse"
-        android:permission="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Voice-Interaction entry point -->
-    <service
-        android:name=".assistant.AssistantVoiceInteractionService"
-        android:exported="true"
-        android:permission="android.permission.BIND_VOICE_INTERACTION">
-        <meta-data
-            android:name="android.voice_interaction"
-            android:resource="@xml/voice_interaction" />
-        <intent-filter>
-            <action android:name="android.service.voice.VoiceInteractionService" />
-        </intent-filter>
-    </service>    
-    <!-- Make the app selectable as default assistant in Settings -->
-    <service
-        android:name=".AssistantService"
-        android:exported="false"
-        android:foregroundServiceType="mediaProjection"
-        />
-    <service
-        android:name=".SystemOverlayService"
-        android:foregroundServiceType="specialUse"
-        android:exported="false">
-        <property
-            android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-            android:value="assistant_overlay" />
-    </service>
-    <service android:name=".SystemOverlayService"
-            android:foregroundServiceType="specialUse"
-            android:exported="false">
-      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="assistant_overlay"/>
-    </service>
-    <service android:name=".IvoryAssistantService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-      <intent-filter>
-        <action android:name="android.service.voice.VoiceInteractionService"/>
-      </intent-filter>
-      <meta-data android:name="android.voice_interaction"
-                android:resource="@xml/interaction_service"/>
-    </service>
-    <service android:name=".IvoryAssistantSessionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true"/>
-    <activity
-        android:name=".PillOverlayActivity"
-        android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
-        android:excludeFromRecents="true"
-        android:exported="false"
-        android:taskAffinity="">
-    </activity>
-    <meta-data
-        android:name="com.android.settings.ASSISTANT"
-        android:resource="@xml/assistant_settings" />  
   </application>
 </manifest>
