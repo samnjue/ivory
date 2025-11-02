@@ -34,6 +34,10 @@ export default function SettingsScreen({ navigation }: any) {
   const circleColor = isDark ? "#000000" : "#FFFFFF";
 
   useEffect(() => {
+    AssistantModule.requestAssistPermission();
+  }, []);
+
+  useEffect(() => {
     checkPermissions();
   }, []);
 

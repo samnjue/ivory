@@ -31,9 +31,6 @@ import {
 import * as SystemUi from "expo-system-ui";
 import { COLORS } from "./src/constants/colors";
 import { registerRootComponent } from "expo";
-import OverlayInputBar from "./src/components/OverlayInputBar";
-
-registerRootComponent(OverlayInputBar);
 
 const { AssistantModule } = NativeModules;
 

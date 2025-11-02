@@ -11,10 +11,6 @@ const { Assistant } = NativeModules;
 console.log("Available Native Modules:", NativeModules);
 console.log("AssistantModule:", NativeModules.AssistantModule);
 
-useEffect(() => {
-  Assistant.requestAssistantRole(); // add this method to AssistantModule
-}, []);
-
 interface AssistantModuleInterface {
 	requestAssistPermission: () => Promise<boolean>;
 	isAssistantEnabled: () => Promise<boolean>;

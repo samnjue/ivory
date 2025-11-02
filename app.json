@@ -11,6 +11,7 @@
       "ios": {
         "supportsTablet": true
       },
+      "entryPoint": "./src/overlay-entry.tsx",
       "android": {
         "adaptiveIcon": {
           "foregroundImage": "./assets/icons/adaptive-icon.png",
