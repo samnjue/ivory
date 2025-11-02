@@ -102,6 +102,6 @@ class SystemOverlayService : Service() {
         .setContentTitle("")
         .setContentText("")
         .setSmallIcon(android.R.drawable.ic_menu_info_details)
-        .setPriority(NotificationCompat.PRIMARY_MIN)
+        .setPriority(NotificationCompat.PRIORITY_MIN)
         .build()
 }
