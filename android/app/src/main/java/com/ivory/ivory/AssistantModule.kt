@@ -1,26 +1,36 @@
 package com.ivory.ivory
 
+import android.Manifest
+import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.modules.core.PermissionAwareActivity
+import com.facebook.react.modules.core.PermissionListener
 
 class AssistantModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+    ReactContextBaseJavaModule(reactContext), PermissionListener {
 
-    override fun getName() = "Assistant"
+    private val MICROPHONE_REQUEST_CODE = 1001
+    private var micPromise: Promise? = null
 
-    // Permission helpers
+    override fun getName() = "AssistantModule"
+
     @ReactMethod
     fun requestOverlayPermission(promise: Promise) {
         try {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
                 data = android.net.Uri.parse("package:${reactApplicationContext.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            reactApplicationContext.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            reactApplicationContext.startActivity(intent)
             promise.resolve(true)
         } catch (e: Exception) {
-            promise.reject("OVERLAY", e)
+            promise.reject("OVERLAY_ERROR", e)
         }
     }
 
@@ -29,7 +39,6 @@ class AssistantModule(reactContext: ReactApplicationContext) :
         promise.resolve(Settings.canDrawOverlays(reactApplicationContext))
     }
 
-    // Assistant role
     @ReactMethod
     fun requestAssistPermission(promise: Promise) {
         try {
@@ -37,7 +46,8 @@ class AssistantModule(reactContext: ReactApplicationContext) :
                 val roleManager = reactApplicationContext.getSystemService(android.app.role.RoleManager::class.java)
                 if (roleManager?.isRoleAvailable(android.app.role.RoleManager.ROLE_ASSISTANT) == true) {
                     val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_ASSISTANT)
-                    reactApplicationContext.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    reactApplicationContext.startActivity(intent)
                     promise.resolve(true)
                 } else {
                     promise.resolve(false)
@@ -46,7 +56,7 @@ class AssistantModule(reactContext: ReactApplicationContext) :
                 promise.resolve(false)
             }
         } catch (e: Exception) {
-            promise.reject("ASSIST", e)
+            promise.reject("ASSIST_ERROR", e)
         }
     }
 
@@ -60,7 +70,44 @@ class AssistantModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    // Open main app
+    @ReactMethod
+    fun requestMicrophonePermission(promise: Promise) {
+        val currentActivity = currentActivity
+        if (currentActivity == null) {
+            promise.reject("ACTIVITY_NULL", "Current activity is null")
+            return
+        }
+
+        if (ContextCompat.checkSelfPermission(reactApplicationContext, Manifest.permission.RECORD_AUDIO) 
+            == PackageManager.PERMISSION_GRANTED) {
+            promise.resolve(true)
+            return
+        }
+
+        micPromise = promise
+        val permissionAwareActivity = currentActivity as? PermissionAwareActivity
+        permissionAwareActivity?.requestPermissions(
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            MICROPHONE_REQUEST_CODE,
+            this
+        ) ?: promise.reject("PERMISSION_ERROR", "Activity is not PermissionAwareActivity")
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>?,
+        grantResults: IntArray?
+    ): Boolean {
+        if (requestCode == MICROPHONE_REQUEST_CODE) {
+            val granted = grantResults?.isNotEmpty() == true && 
+                         grantResults[0] == PackageManager.PERMISSION_GRANTED
+            micPromise?.resolve(granted)
+            micPromise = null
+            return true
+        }
+        return false
+    }
+
     @ReactMethod
     fun openMainApp() {
         val intent = Intent(reactApplicationContext, MainActivity::class.java).apply {
@@ -69,7 +116,6 @@ class AssistantModule(reactContext: ReactApplicationContext) :
         reactApplicationContext.startActivity(intent)
     }
 
-    // Send text from overlay to JS 
     @ReactMethod
     fun sendText(text: String) {
         reactApplicationContext
@@ -77,7 +123,6 @@ class AssistantModule(reactContext: ReactApplicationContext) :
             .emit("OverlayText", text)
     }
 
-    // Finish overlay activity (optional) 
     @ReactMethod
     fun finishActivity() {
         SystemOverlayService.hide(reactApplicationContext)
