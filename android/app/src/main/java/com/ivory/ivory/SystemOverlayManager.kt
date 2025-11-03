@@ -9,7 +9,6 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -36,7 +35,6 @@ class SystemOverlayManager : Service() {
     
     private var micIcon: ImageView? = null
     private var micBlurLayer: ImageView? = null
-    private var micGradientCircle: ImageView? = null
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
     
@@ -113,7 +111,6 @@ class SystemOverlayManager : Service() {
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
         micIcon = overlayView?.findViewById(R.id.micIcon)
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
-        micGradientCircle = overlayView?.findViewById(R.id.micGradientCircle)
 
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -266,25 +263,23 @@ class SystemOverlayManager : Service() {
         isListening = true
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                micGradientCircle?.let { gradient ->
-                    // Apply gradient to the main icon
-                    icon.setImageDrawable(createGradientDrawable())
-                    icon.clearColorFilter()
-                    
-                    // Show and setup blur layer with gradient
-                    blur.visibility = View.VISIBLE
-                    blur.setImageDrawable(createGradientDrawable())
-                    blur.clearColorFilter()
-                    
-                    // Start animations
-                    val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
-                    val blurPulse = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
-                    
-                    icon.startAnimation(pulseAnim)
-                    blur.startAnimation(blurPulse)
-                    
-                    Log.d(TAG, "Started listening animation")
-                }
+                // Apply gradient to the main icon
+                icon.setImageDrawable(createGradientDrawable())
+                icon.clearColorFilter()
+                
+                // Show and setup blur layer with gradient
+                blur.visibility = View.VISIBLE
+                blur.setImageDrawable(createGradientDrawable())
+                blur.clearColorFilter()
+                
+                // Start animations
+                val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
+                val blurPulse = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
+                
+                icon.startAnimation(pulseAnim)
+                blur.startAnimation(blurPulse)
+                
+                Log.d(TAG, "Started listening animation")
             }
         }
     }
@@ -341,7 +336,6 @@ class SystemOverlayManager : Service() {
         }
         micIcon = null
         micBlurLayer = null
-        micGradientCircle = null
         isListening = false
         layoutParams = null
         stopSelf()
