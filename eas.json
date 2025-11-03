@@ -13,8 +13,7 @@
         },
         "gradleCommand": ":app:assembleDebug",
         "buildType": "apk"
-      },
-      "image": "latest"
+      }
     },
     "preview": {
       "distribution": "internal",
