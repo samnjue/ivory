@@ -10,9 +10,9 @@
         android:id="@+id/overlayCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="30dp"
-        android:layout_marginEnd="30dp"
-        android:background="@drawable/overlay_background"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/overlay_background_light"
         android:elevation="8dp">
         
         <LinearLayout
@@ -50,30 +50,20 @@
             <!-- Mic button -->
             <FrameLayout
                 android:id="@+id/micContainer"
-                android:layout_width="43dp"
-                android:layout_height="43dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true">
 
-                <!-- Gradient circle background -->
-                <ImageView
-                    android:id="@+id/micGradientCircle"
-                    android:layout_width="43dp"
-                    android:layout_height="43dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/gradient_circle"
-                    android:visibility="gone"
-                    android:alpha="0" />
-
                 <!-- Blur layer for glow effect -->
                 <ImageView
                     android:id="@+id/micBlurLayer"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_mic"
-                    android:alpha="0"
+                    android:alpha="0.5"
                     android:visibility="gone" />
 
                 <!-- Main mic icon -->
@@ -83,6 +73,13 @@
                     android:layout_height="24dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_mic" />
+                    
+                <!-- Placeholder for removed gradient circle -->
+                <View
+                    android:id="@+id/micGradientCircle"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
             </FrameLayout>
 
             <!-- Ivory star button / Send button container -->
@@ -95,7 +92,7 @@
                     android:id="@+id/voiceContainer"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@drawable/gradient_border"
+                    android:background="@drawable/gradient_border_light"
                     android:clickable="true"
                     android:focusable="true">
 
