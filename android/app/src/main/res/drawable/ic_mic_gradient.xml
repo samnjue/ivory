@@ -1,22 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Gradient background -->
     <item>
-        <shape android:shape="oval">
+        <shape android:shape="rectangle">
             <gradient
                 android:type="linear"
                 android:angle="135"
-                android:startColor="#FF6B9D"
-                android:centerColor="#9C7EFF"
-                android:endColor="#4ECDC4" />
-            <size
-                android:width="24dp"
-                android:height="24dp" />
+                android:startColor="#e63946"
+                android:endColor="#4285f4" />
         </shape>
     </item>
-    <item
-        android:drawable="@drawable/ic_mic"
-        android:top="0dp"
-        android:bottom="0dp"
-        android:left="0dp"
-        android:right="0dp" />
+    <!-- Mic icon on top -->
+    <item>
+        <vector
+            android:width="24dp"
+            android:height="24dp"
+            android:viewportWidth="24"
+            android:viewportHeight="24">
+            <path
+                android:pathData="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"
+                android:strokeWidth="2"
+                android:strokeColor="#FFFFFF"
+                android:fillColor="@android:color/transparent"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:pathData="M19 10v2a7 7 0 0 1-14 0v-2"
+                android:strokeWidth="2"
+                android:strokeColor="#FFFFFF"
+                android:fillColor="@android:color/transparent"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:pathData="M12 19v3"
+                android:strokeWidth="2"
+                android:strokeColor="#FFFFFF"
+                android:fillColor="@android:color/transparent"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+        </vector>
+    </item>
 </layer-list>

@@ -7,8 +7,11 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
-import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -27,6 +30,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 
 class SystemOverlayManager : Service() {
     private val TAG = "SystemOverlayManager"
@@ -85,8 +89,7 @@ class SystemOverlayManager : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
-                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND or
-                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND,
             PixelFormat.TRANSLUCENT
         )
 
@@ -111,6 +114,18 @@ class SystemOverlayManager : Service() {
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
         micIcon = overlayView?.findViewById(R.id.micIcon)
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
+
+        // Make input field focusable and show keyboard
+        inputField?.apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnClickListener {
+                requestFocus()
+                // Show keyboard
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                imm.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
 
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -242,35 +257,54 @@ class SystemOverlayManager : Service() {
             if (isDarkMode) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         )
 
+        val iconColor = if (isDarkMode) Color.WHITE else Color.parseColor("#333333")
+        
         if (isDarkMode) {
             // Dark mode
             inputField?.setTextColor(Color.WHITE)
             inputField?.setHintTextColor(Color.parseColor("#88FFFFFF"))
-            paperclipButton?.setColorFilter(Color.WHITE)
-            sendButton?.setColorFilter(Color.WHITE)
-            micIcon?.setColorFilter(Color.WHITE)
         } else {
             // Light mode
             inputField?.setTextColor(Color.parseColor("#333333"))
             inputField?.setHintTextColor(Color.parseColor("#88333333"))
-            paperclipButton?.setColorFilter(Color.parseColor("#333333"))
-            sendButton?.setColorFilter(Color.parseColor("#333333"))
-            micIcon?.setColorFilter(Color.parseColor("#333333"))
         }
+        
+        // Apply color filter to icons
+        paperclipButton?.setColorFilter(iconColor)
+        sendButton?.setColorFilter(iconColor)
+        micIcon?.setColorFilter(iconColor)
     }
 
     private fun startListeningAnimation() {
         isListening = true
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                // Apply gradient to the main icon
-                icon.setImageDrawable(createGradientDrawable())
-                icon.clearColorFilter()
+                // Create gradient colored mic icon drawable for main icon
+                val mainMicDrawable = ContextCompat.getDrawable(this, R.drawable.ic_mic)?.mutate()
+                mainMicDrawable?.let { drawable ->
+                    val wrappedDrawable = DrawableCompat.wrap(drawable)
+                    DrawableCompat.setTintList(wrappedDrawable, null)
+                    
+                    // Apply gradient shader effect using layer drawable
+                    val gradientLayer = createGradientMicDrawable(wrappedDrawable)
+                    icon.setImageDrawable(gradientLayer)
+                    icon.clearColorFilter()
+                }
                 
-                // Show and setup blur layer with gradient
+                // Create gradient colored mic icon for blur layer
+                val blurMicDrawable = ContextCompat.getDrawable(this, R.drawable.ic_mic)?.mutate()
+                blurMicDrawable?.let { drawable ->
+                    val wrappedDrawable = DrawableCompat.wrap(drawable)
+                    DrawableCompat.setTintList(wrappedDrawable, null)
+                    
+                    val gradientLayer = createGradientMicDrawable(wrappedDrawable)
+                    blur.setImageDrawable(gradientLayer)
+                    blur.clearColorFilter()
+                }
+                
+                // Show and animate blur layer
                 blur.visibility = View.VISIBLE
-                blur.setImageDrawable(createGradientDrawable())
-                blur.clearColorFilter()
+                blur.alpha = 0.6f
                 
                 // Start animations
                 val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
@@ -284,16 +318,21 @@ class SystemOverlayManager : Service() {
         }
     }
 
-    private fun createGradientDrawable(): GradientDrawable {
-        return GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(
-                Color.parseColor("#e63946"), // Red
-                Color.parseColor("#4285f4")  // Blue
-            )
-        ).apply {
-            shape = GradientDrawable.OVAL
-        }
+    private fun createGradientMicDrawable(micDrawable: Drawable): LayerDrawable {
+        // Create a gradient drawable with the mic icon on top
+        val gradientDrawable = ContextCompat.getDrawable(this, R.drawable.mic_gradient_overlay)
+        
+        val layers = arrayOf(micDrawable)
+        val layerDrawable = LayerDrawable(layers)
+        
+        // Apply gradient color filter to simulate gradient
+        val colorFilter = PorterDuffColorFilter(
+            Color.parseColor("#e63946"), 
+            PorterDuff.Mode.SRC_ATOP
+        )
+        
+        // Create a multi-color effect by using the gradient drawable as background
+        return LayerDrawable(arrayOf(gradientDrawable, micDrawable))
     }
 
     private fun stopListeningAnimation() {
