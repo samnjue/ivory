@@ -7,11 +7,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -279,30 +275,13 @@ class SystemOverlayManager : Service() {
         isListening = true
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                // Create gradient colored mic icon drawable for main icon
-                val mainMicDrawable = ContextCompat.getDrawable(this, R.drawable.ic_mic)?.mutate()
-                mainMicDrawable?.let { drawable ->
-                    val wrappedDrawable = DrawableCompat.wrap(drawable)
-                    DrawableCompat.setTintList(wrappedDrawable, null)
-                    
-                    // Apply gradient shader effect using layer drawable
-                    val gradientLayer = createGradientMicDrawable(wrappedDrawable)
-                    icon.setImageDrawable(gradientLayer)
-                    icon.clearColorFilter()
-                }
+                // Use the gradient mic drawable
+                icon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_gradient))
+                icon.clearColorFilter()
                 
-                // Create gradient colored mic icon for blur layer
-                val blurMicDrawable = ContextCompat.getDrawable(this, R.drawable.ic_mic)?.mutate()
-                blurMicDrawable?.let { drawable ->
-                    val wrappedDrawable = DrawableCompat.wrap(drawable)
-                    DrawableCompat.setTintList(wrappedDrawable, null)
-                    
-                    val gradientLayer = createGradientMicDrawable(wrappedDrawable)
-                    blur.setImageDrawable(gradientLayer)
-                    blur.clearColorFilter()
-                }
-                
-                // Show and animate blur layer
+                // Show and setup blur layer with same gradient drawable
+                blur.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_gradient))
+                blur.clearColorFilter()
                 blur.visibility = View.VISIBLE
                 blur.alpha = 0.6f
                 
@@ -316,23 +295,6 @@ class SystemOverlayManager : Service() {
                 Log.d(TAG, "Started listening animation")
             }
         }
-    }
-
-    private fun createGradientMicDrawable(micDrawable: Drawable): LayerDrawable {
-        // Create a gradient drawable with the mic icon on top
-        val gradientDrawable = ContextCompat.getDrawable(this, R.drawable.mic_gradient_overlay)
-        
-        val layers = arrayOf(micDrawable)
-        val layerDrawable = LayerDrawable(layers)
-        
-        // Apply gradient color filter to simulate gradient
-        val colorFilter = PorterDuffColorFilter(
-            Color.parseColor("#e63946"), 
-            PorterDuff.Mode.SRC_ATOP
-        )
-        
-        // Create a multi-color effect by using the gradient drawable as background
-        return LayerDrawable(arrayOf(gradientDrawable, micDrawable))
     }
 
     private fun stopListeningAnimation() {
