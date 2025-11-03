@@ -1,9 +1,6 @@
 package com.ivory.ivory
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,6 +8,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -28,13 +27,12 @@ import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
+import androidx.core.content.ContextCompat
 
 class SystemOverlayManager : Service() {
     private val TAG = "SystemOverlayManager"
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
-    private val NOTIFICATION_ID = 1
-    private val CHANNEL_ID = "overlay_channel"
     
     private var micIcon: ImageView? = null
     private var micBlurLayer: ImageView? = null
@@ -50,31 +48,6 @@ class SystemOverlayManager : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "SystemOverlayManager service created")
-        startForegroundService()
-    }
-
-    private fun startForegroundService() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Assistant Overlay Channel",
-                NotificationManager.IMPORTANCE_MIN
-            ).apply {
-                description = "Channel for assistant overlay service"
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-
-            val notification = Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("Assistant Overlay")
-                .setContentText("Running assistant overlay")
-                .setSmallIcon(android.R.drawable.ic_menu_info_details)
-                .setPriority(Notification.PRIORITY_MIN)
-                .build()
-
-            startForeground(NOTIFICATION_ID, notification)
-            Log.d(TAG, "Foreground service started")
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -100,8 +73,7 @@ class SystemOverlayManager : Service() {
 
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
-        val overlayWidth = (screenWidth * 0.85).toInt()
-        val horizontalMargin = (screenWidth * 0.075).toInt()
+        val overlayWidth = (screenWidth * 0.96).toInt()
         
         overlayView?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
 
@@ -115,7 +87,8 @@ class SystemOverlayManager : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
-                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND,
+                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND or
+                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
             PixelFormat.TRANSLUCENT
         )
 
@@ -131,7 +104,6 @@ class SystemOverlayManager : Service() {
         }
 
         applyTheme()
-
         setupKeyboardListener()
 
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
@@ -252,6 +224,7 @@ class SystemOverlayManager : Service() {
     }
 
     private fun applyTheme() {
+        val overlayCard = overlayView?.findViewById<View>(R.id.overlayCard)
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
@@ -259,17 +232,30 @@ class SystemOverlayManager : Service() {
         val isDarkMode = (resources.configuration.uiMode and 
                          Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
+        // Update overlay background based on theme
+        overlayCard?.background = ContextCompat.getDrawable(
+            this, 
+            if (isDarkMode) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
+        )
+
+        // Update gradient border inner color based on theme
+        val voiceContainer = overlayView?.findViewById<View>(R.id.voiceContainer)
+        voiceContainer?.background = ContextCompat.getDrawable(
+            this,
+            if (isDarkMode) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
+        )
+
         if (isDarkMode) {
             // Dark mode
             inputField?.setTextColor(Color.WHITE)
-            inputField?.setHintTextColor(Color.parseColor("#AAAAAA"))
+            inputField?.setHintTextColor(Color.parseColor("#88FFFFFF"))
             paperclipButton?.setColorFilter(Color.WHITE)
             sendButton?.setColorFilter(Color.WHITE)
             micIcon?.setColorFilter(Color.WHITE)
         } else {
             // Light mode
             inputField?.setTextColor(Color.parseColor("#333333"))
-            inputField?.setHintTextColor(Color.parseColor("#888888"))
+            inputField?.setHintTextColor(Color.parseColor("#88333333"))
             paperclipButton?.setColorFilter(Color.parseColor("#333333"))
             sendButton?.setColorFilter(Color.parseColor("#333333"))
             micIcon?.setColorFilter(Color.parseColor("#333333"))
@@ -281,33 +267,37 @@ class SystemOverlayManager : Service() {
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
                 micGradientCircle?.let { gradient ->
-                    // Show gradient circle
-                    gradient.visibility = View.VISIBLE
-                    gradient.alpha = 1.0f
-                    
-                    // Remove color filter for white icon
+                    // Apply gradient to the main icon
+                    icon.setImageDrawable(createGradientDrawable())
                     icon.clearColorFilter()
-                    icon.setColorFilter(Color.WHITE)
                     
-                    // Show and animate blur layer
+                    // Show and setup blur layer with gradient
                     blur.visibility = View.VISIBLE
-                    blur.setColorFilter(Color.WHITE)
+                    blur.setImageDrawable(createGradientDrawable())
+                    blur.clearColorFilter()
                     
-                    val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
-                    blur.startAnimation(fadeIn)
-                    blur.alpha = 0.5f
-                    
-                    // Start pulse animations
+                    // Start animations
                     val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
-                    val gradientPulse = AnimationUtils.loadAnimation(this, R.anim.gradient_pulse)
+                    val blurPulse = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
                     
                     icon.startAnimation(pulseAnim)
-                    blur.startAnimation(pulseAnim)
-                    gradient.startAnimation(gradientPulse)
+                    blur.startAnimation(blurPulse)
                     
                     Log.d(TAG, "Started listening animation")
                 }
             }
+        }
+    }
+
+    private fun createGradientDrawable(): GradientDrawable {
+        return GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(
+                Color.parseColor("#e63946"), // Red
+                Color.parseColor("#4285f4")  // Blue
+            )
+        ).apply {
+            shape = GradientDrawable.OVAL
         }
     }
 
@@ -317,32 +307,27 @@ class SystemOverlayManager : Service() {
         
         micIcon?.let { icon ->
             micBlurLayer?.let { blur ->
-                micGradientCircle?.let { gradient ->
-                    // Clear animations
-                    icon.clearAnimation()
-                    blur.clearAnimation()
-                    gradient.clearAnimation()
+                // Clear animations
+                icon.clearAnimation()
+                blur.clearAnimation()
+                
+                // Fade out blur layer
+                val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+                fadeOut.fillAfter = true
+                blur.startAnimation(fadeOut)
+                
+                // Delay hiding elements and resetting icon
+                Handler(Looper.getMainLooper()).postDelayed({
+                    blur.visibility = View.GONE
                     
-                    // Fade out blur layer and gradient
-                    val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-                    fadeOut.fillAfter = true
-                    blur.startAnimation(fadeOut)
-                    gradient.startAnimation(fadeOut)
-                    
-                    // Delay hiding elements and resetting icon
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        blur.visibility = View.GONE
-                        gradient.visibility = View.GONE
-                        gradient.alpha = 0f
-                        
-                        // Reset to normal icon based on theme
-                        val isDarkMode = (resources.configuration.uiMode and 
-                                         Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                        icon.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
-                    }, 300)
-                    
-                    Log.d(TAG, "Stopped listening animation")
-                }
+                    // Reset to normal icon based on theme
+                    icon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic))
+                    val isDarkMode = (resources.configuration.uiMode and 
+                                     Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    icon.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
+                }, 300)
+                
+                Log.d(TAG, "Stopped listening animation")
             }
         }
     }
@@ -389,11 +374,7 @@ class SystemOverlayManager : Service() {
             val intent = Intent(context, SystemOverlayManager::class.java).apply {
                 action = ACTION_SHOW_OVERLAY
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startService(intent)
         }
 
         fun hide(context: Context) {
