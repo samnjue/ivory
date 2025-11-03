@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Same gradient mic, but larger canvas -->
+    <path
+        android:pathData="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"
+        android:fillColor="#e63946" />
+    <path
+        android:pathData="M19 10v2a7 7 0 0 1-14 0v-2"
+        android:fillColor="#4285f4" />
+    <path
+        android:pathData="M12 19v3"
+        android:fillColor="#4285f4" />
+</vector>

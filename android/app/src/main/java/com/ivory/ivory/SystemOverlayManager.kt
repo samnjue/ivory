@@ -41,6 +41,8 @@ class SystemOverlayManager : Service() {
     private var originalY = 0
     private var layoutParams: WindowManager.LayoutParams? = null
 
+    private var isKeyboardShowing = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -189,30 +191,27 @@ class SystemOverlayManager : Service() {
     }
 
     private fun setupKeyboardListener() {
-        overlayView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            private var isKeyboardShowing = false
-            
-            override fun onGlobalLayout() {
-                val rect = Rect()
-                overlayView?.getWindowVisibleDisplayFrame(rect)
-                val screenHeight = overlayView?.rootView?.height ?: 0
-                val keypadHeight = screenHeight - rect.bottom
+        overlayView?.viewTreeObserver?.addOnGlobalLayoutListener {
+            val r = Rect()
+            overlayView?.getWindowVisibleDisplayFrame(r)
+            val screenHeight = overlayView?.rootView?.height ?: 0
+            val keypadHeight = screenHeight - r.bottom
 
-                if (keypadHeight > screenHeight * 0.15) {
-                    // Keyboard is showing
-                    if (!isKeyboardShowing) {
-                        isKeyboardShowing = true
-                        adjustOverlayForKeyboard(keypadHeight)
-                    }
-                } else {
-                    // Keyboard is hidden
-                    if (isKeyboardShowing) {
-                        isKeyboardShowing = false
-                        resetOverlayPosition()
-                    }
+            if (keypadHeight > screenHeight * 0.15) {   // keyboard visible
+                if (!isKeyboardShowing) {
+                    isKeyboardShowing = true
+                    // Move overlay **above** the keyboard (add a small gap)
+                    layoutParams?.y = keypadHeight + 20
+                    windowManager?.updateViewLayout(overlayView, layoutParams)
+                }
+            } else {
+                if (isKeyboardShowing) {
+                    isKeyboardShowing = false 
+                    layoutParams?.y = originalY 
+                    windowManager?.updateViewLayout(overlayView, layoutParams)
                 }
             }
-        })
+        }
     }
 
     private fun adjustOverlayForKeyboard(keyboardHeight: Int) {
@@ -233,66 +232,66 @@ class SystemOverlayManager : Service() {
 
     private fun applyTheme() {
         val overlayCard = overlayView?.findViewById<View>(R.id.overlayCard)
-        val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
-        val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
-        val sendButton = overlayView?.findViewById<ImageButton>(R.id.sendButton)
-        
-        val isDarkMode = (resources.configuration.uiMode and 
-                         Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-
-        // Update overlay background based on theme
-        overlayCard?.background = ContextCompat.getDrawable(
-            this, 
-            if (isDarkMode) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
-        )
-
-        // Update gradient border inner color based on theme
+        val inputField   = overlayView?.findViewById<EditText>(R.id.inputField)
+        val paperclipBtn = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
+        val sendBtn      = overlayView?.findViewById<ImageButton>(R.id.sendButton)
         val voiceContainer = overlayView?.findViewById<View>(R.id.voiceContainer)
+
+        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                     Configuration.UI_MODE_NIGHT_YES
+
+        // Card background
+        overlayCard?.background = ContextCompat.getDrawable(
+            this,
+            if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
+        )
         voiceContainer?.background = ContextCompat.getDrawable(
             this,
-            if (isDarkMode) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
+            if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         )
 
-        val iconColor = if (isDarkMode) Color.WHITE else Color.parseColor("#333333")
-        
-        if (isDarkMode) {
-            // Dark mode
-            inputField?.setTextColor(Color.WHITE)
-            inputField?.setHintTextColor(Color.parseColor("#88FFFFFF"))
-        } else {
-            // Light mode
-            inputField?.setTextColor(Color.parseColor("#333333"))
-            inputField?.setHintTextColor(Color.parseColor("#88333333"))
-        }
-        
-        // Apply color filter to icons
-        paperclipButton?.setColorFilter(iconColor)
-        sendButton?.setColorFilter(iconColor)
-        micIcon?.setColorFilter(iconColor)
+        // Text colors
+        val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
+        inputField?.setTextColor(textColor)
+        inputField?.setHintTextColor(hintColor)
+
+        // Icon tint (paper-clip, send, mic)
+        val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        paperclipBtn?.setColorFilter(iconTint)
+        sendBtn?.setColorFilter(iconTint)
+        micIcon?.setColorFilter(iconTint)          // <-- mic now tinted correctly
     }
 
     private fun startListeningAnimation() {
         isListening = true
-        micIcon?.let { icon ->
+
+        micIcon?.let { main ->
             micBlurLayer?.let { blur ->
-                // Use the gradient mic drawable
-                icon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_gradient))
-                icon.clearColorFilter()
-                
-                // Show and setup blur layer with same gradient drawable
-                blur.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_gradient))
-                blur.clearColorFilter()
+
+                // Main icon: gradient mic
+                main.setImageResource(R.drawable.ic_mic_gradient)
+                main.clearColorFilter()
+
+                // Blur layer: larger gradient mic
+                blur.setImageResource(R.drawable.ic_mic_blur_gradient)
                 blur.visibility = View.VISIBLE
                 blur.alpha = 0.6f
-                
-                // Start animations
-                val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
-                val blurPulse = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
-                
-                icon.startAnimation(pulseAnim)
-                blur.startAnimation(blurPulse)
-                
-                Log.d(TAG, "Started listening animation")
+
+                // Apply real blur (Android 12+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    blur.setRenderEffect(
+                        RenderEffect.createBlurEffect(16f, 16f, Shader.TileMode.CLAMP)
+                    )
+                }
+
+                // Pulsate blur layer
+                val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
+                blur.startAnimation(pulseAnim)
+
+                // Subtle pulse on main icon
+                val mainPulse = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
+                main.startAnimation(mainPulse)
             }
         }
     }
@@ -300,30 +299,22 @@ class SystemOverlayManager : Service() {
     private fun stopListeningAnimation() {
         stopListeningHandler.removeCallbacksAndMessages(null)
         isListening = false
-        
-        micIcon?.let { icon ->
+
+        micIcon?.let { main ->
             micBlurLayer?.let { blur ->
-                // Clear animations
-                icon.clearAnimation()
+                main.clearAnimation()
                 blur.clearAnimation()
-                
-                // Fade out blur layer
-                val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-                fadeOut.fillAfter = true
-                blur.startAnimation(fadeOut)
-                
-                // Delay hiding elements and resetting icon
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    blur.setRenderEffect(null)
+                }
+
+                blur.visibility = View.GONE
+
                 Handler(Looper.getMainLooper()).postDelayed({
-                    blur.visibility = View.GONE
-                    
-                    // Reset to normal icon based on theme
-                    icon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic))
-                    val isDarkMode = (resources.configuration.uiMode and 
-                                     Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                    icon.setColorFilter(if (isDarkMode) Color.WHITE else Color.parseColor("#333333"))
-                }, 300)
-                
-                Log.d(TAG, "Stopped listening animation")
+                    main.setImageResource(R.drawable.ic_mic)
+                    applyTheme() // re-apply tint
+                }, 100)
             }
         }
     }
