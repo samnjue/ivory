@@ -5,8 +5,11 @@ pluginManagement {
     gradlePluginPortal()
   }
 
+  // React Native Gradle Plugin
   includeBuild("../node_modules/@react-native/gradle-plugin")
-  includeBuild("../node_modules/expo-modules-autolinking")
+
+  // Expo Gradle Plugin (autolinking)
+  includeBuild("../node_modules/expo-modules-autolinking/android/expo-gradle-plugin")
 }
 
 plugins {
