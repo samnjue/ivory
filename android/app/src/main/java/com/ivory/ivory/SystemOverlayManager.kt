@@ -8,6 +8,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.RenderEffect 
+import android.graphics.Shader
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
