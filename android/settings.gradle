@@ -1,5 +1,5 @@
 pluginManagement {
-  def reactNativeGradlePlugin = new File(
+  def reactNativeGradlePluginPath = new File(
     providers.exec {
       workingDir(rootDir)
       commandLine(
