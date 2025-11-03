@@ -22,15 +22,7 @@ import {
 	CardStyleInterpolators,
 	TransitionSpecs,
 } from "@react-navigation/stack";
-import {
-	DeviceEventEmitter,
-	NativeModules,
-	Platform,
-	useColorScheme,
-} from "react-native";
-import * as SystemUi from "expo-system-ui";
-import { COLORS } from "./src/constants/colors";
-import { registerRootComponent } from "expo";
+import { DeviceEventEmitter, NativeModules, Platform } from "react-native";
 
 const { AssistantModule } = NativeModules;
 
@@ -95,39 +87,20 @@ export default function App() {
 		return () => sub.remove();
 	}, []);
 
-	const colorScheme = useColorScheme();
-	const isDark = colorScheme === "dark";
-	const colors = isDark ? COLORS.dark : COLORS.light;
-
 	useEffect(() => {
-		async function prepareApp() {
-			try {
-				await SystemUi.setBackgroundColorAsync(isDark ? "#00000D" : "#EDEBFF");
-			} catch (e) {
-				console.warn(e);
-			} finally {
-				if (fontsLoaded) {
-					SplashScreen.hideAsync();
-				}
-			}
-		}
-	}, [fontsLoaded, isDark]);
+		if (fontsLoaded) SplashScreen.hideAsync();
+	}, [fontsLoaded]);
 
 	useEffect(() => {
 		const assistSubscription = DeviceEventEmitter.addListener(
 			"onAssistRequested",
 			(event) => {
 				console.log("Received onAssistRequested event", event);
-				// Delay to allow native animation to start
-				setTimeout(() => {
-					setShowAssistOverlay(true);
-					setIsAssistMode(true);
-					if (event?.query && navigationRef.current) {
-						navigationRef.current.navigate("ChatScreen", {
-							initialQuery: event.query,
-						});
-					}
-				}, 100); // Adjusted delay to match slide_up animation (400ms)
+				setShowAssistOverlay(true);
+				setIsAssistMode(true);
+				if (event?.query && navigationRef.current) {
+					navigationRef.current.navigate("ChatScreen", { initialQuery: event.query });
+				}
 			}
 		);
 
@@ -174,4 +147,4 @@ export default function App() {
 			/>
 		</>
 	);
-}
+} 
