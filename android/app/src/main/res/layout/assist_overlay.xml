@@ -1,117 +1,126 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/overlayContainer"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootOverlay"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="20dp">
-
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:fitsSystemWindows="true"
+    android:gravity="bottom">
+    
     <FrameLayout
-        android:id="@+id/overlayCard"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/overlayContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:background="@drawable/overlay_background_light"
-        android:elevation="8dp">
+        android:layout_marginBottom="20dp">
 
-        <LinearLayout
+        <FrameLayout
+            android:id="@+id/overlayCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="10dp"
-            android:gravity="center_vertical">
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/overlay_background"
+            android:elevation="8dp">
 
-            <!-- Paper-clip -->
-            <ImageButton
-                android:id="@+id/paperclipButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_paperclip"
-                android:scaleType="centerInside"
-                android:padding="8dp"
-                android:contentDescription="Attachment" />
-
-            <!-- Input -->
-            <EditText
-                android:id="@+id/inputField"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:hint="Ask anything"
-                android:textSize="16sp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:inputType="textMultiLine"
-                android:maxLines="5"
-                android:gravity="center_vertical"
-                android:fontFamily="@font/red_rose"
-                android:imeOptions="actionSend" />
+                android:orientation="horizontal"
+                android:padding="10dp"
+                android:gravity="center_vertical">
 
-            <!-- MIC CONTAINER (clickable) -->
-            <FrameLayout
-                android:id="@+id/micContainer"
-                android:layout_width="43dp"
-                android:layout_height="43dp"
-                android:layout_marginEnd="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:layout_gravity="center">
+                <!-- Paper-clip -->
+                <ImageButton
+                    android:id="@+id/paperclipButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_paperclip"
+                    android:scaleType="centerInside"
+                    android:padding="8dp"
+                    android:contentDescription="Attachment" />
 
-                <!-- Pulsating blur layer (larger) -->
-                <ImageView
-                    android:id="@+id/micBlurLayer"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_mic_blur_gradient"
-                    android:scaleType="center"
-                    android:visibility="gone"
-                    android:alpha="0.5" />
+                <!-- Input -->
+                <EditText
+                    android:id="@+id/inputField"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Ask anything"
+                    android:textSize="16sp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:inputType="textMultiLine"
+                    android:maxLines="5"
+                    android:gravity="center_vertical"
+                    android:fontFamily="@font/red_rose"
+                    android:imeOptions="actionSend" />
 
-                <ImageView
-                    android:id="@+id/micIcon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_mic"
-                    android:scaleType="center" />
-            </FrameLayout>
-
-            <!-- Ivory-star / Send container -->
-            <FrameLayout
-                android:layout_width="43dp"
-                android:layout_height="43dp"
-                android:layout_gravity="center">
-
+                <!-- MIC CONTAINER (clickable) -->
                 <FrameLayout
-                    android:id="@+id/voiceContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/gradient_border_light"
+                    android:id="@+id/micContainer"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="8dp"
                     android:clickable="true"
-                    android:focusable="true">
+                    android:focusable="true"
+                    android:layout_gravity="center">
+
+                    <!-- Pulsating blur layer (larger) -->
+                    <ImageView
+                        android:id="@+id/micBlurLayer"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_mic_blur_gradient"
+                        android:scaleType="center"
+                        android:visibility="gone"
+                        android:alpha="0.5" />
 
                     <ImageView
+                        android:id="@+id/micIcon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ivorystar" />
+                        android:src="@drawable/ic_mic"
+                        android:scaleType="center" />
                 </FrameLayout>
 
-                <ImageButton
-                    android:id="@+id/sendButton"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:layout_gravity="center"
-                    android:background="@android:color/transparent"
-                    android:src="@drawable/ic_send"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone"
-                    android:contentDescription="Send" />
-            </FrameLayout>
-        </LinearLayout>
+                <!-- Ivory-star / Send container -->
+                <FrameLayout
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_gravity="center">
+
+                    <FrameLayout
+                        android:id="@+id/voiceContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/gradient_border_light"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ivorystar" />
+                    </FrameLayout>
+
+                    <ImageButton
+                        android:id="@+id/sendButton"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_send"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone"
+                        android:contentDescription="Send" />
+                </FrameLayout>
+            </LinearLayout>
+        </FrameLayout>
     </FrameLayout>
 </FrameLayout>
