@@ -28,12 +28,15 @@ public class IvoryAssistantService extends VoiceInteractionService {
     }
 
     private void launchAssist() {
-        Log.d(TAG, "Launching assist overlay");
-        Intent intent = new Intent(this, AssistOverlayActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        Log.d(TAG, "Launching assist");
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        intent.putExtra("showAssistOverlay", true);
+        intent.setAction(Intent.ACTION_ASSIST);
         startActivity(intent);
+        Log.d(TAG, "Started MainActivity");
     }
 }

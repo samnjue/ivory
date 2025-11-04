@@ -64,7 +64,7 @@ export default function CustomDrawerContent({ navigation }: any) {
 				<View
 					style={[
 						styles.searchWrapper,
-						{ backgroundColor: isDark ? "#3a3a3aff" : "#FFFFFF" },
+						{ backgroundColor: isDark ? "#433e55ff" : "#FFFFFF" },
 					]}
 				>
 					<Feather

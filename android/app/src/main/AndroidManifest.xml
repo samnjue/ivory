@@ -38,14 +38,13 @@
         <!-- Transparent overlay activity for assist gesture -->
         <activity
             android:name=".AssistOverlayActivity"
-            android:theme="@style/OverlayActivityTheme"
-            android:launchMode="singleTop"
+            android:theme="@style/TransparentActivity"
+            android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:exported="false"
-            android:noHistory="true"
-            android:windowSoftInputMode="adjustResize|stateVisible"/>
-
+            android:noHistory="true">
+        </activity>
 
         <!-- Main app activity -->
         <activity
