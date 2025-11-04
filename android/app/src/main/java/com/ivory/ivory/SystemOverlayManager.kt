@@ -6,24 +6,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Color
-import android.graphics.PixelFormat
-import android.graphics.Rect
+import android.graphics.*
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.view.Gravity
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewTreeObserver
-import android.view.WindowManager
+import android.view.*
 import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.ImageButton
@@ -44,11 +34,8 @@ class SystemOverlayManager : Service() {
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
 
-    // Keep a reference to the global layout listener so we can remove it
-    private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
-
-    // Current animation if any
     private var currentAnimator: ValueAnimator? = null
+    private var imeDetectorView: View? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -76,13 +63,11 @@ class SystemOverlayManager : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         overlayView = LayoutInflater.from(this).inflate(R.layout.assist_overlay, null)
 
-        // Set overlay width to 96% of screen
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val overlayWidth = (screenWidth * 0.96).toInt()
         overlayView?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
 
-        // Create layout params
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else
@@ -92,7 +77,6 @@ class SystemOverlayManager : Service() {
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             type,
-            // Do NOT set FLAG_NOT_FOCUSABLE — we need focus to show IME.
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
@@ -100,20 +84,16 @@ class SystemOverlayManager : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            y = originalY // distance from bottom
-            // Let the system know we will handle IME adjustments ourselves
+            y = originalY
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
         }
 
-        // Enable blur behind (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             layoutParams?.blurBehindRadius = 25
         }
 
-        // Apply theme (overlayView must exist)
         applyTheme()
 
-        // Add view to WindowManager FIRST
         try {
             windowManager?.addView(overlayView, layoutParams)
             Log.d(TAG, "Overlay view added to window manager")
@@ -123,7 +103,6 @@ class SystemOverlayManager : Service() {
             return
         }
 
-        // === Initialize views AFTER addView ===
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val micContainer = overlayView?.findViewById<View>(R.id.micContainer)
@@ -132,7 +111,6 @@ class SystemOverlayManager : Service() {
         micIcon = overlayView?.findViewById(R.id.micIcon)
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
 
-        // Input field
         inputField?.apply {
             isFocusable = true
             isFocusableInTouchMode = true
@@ -154,7 +132,6 @@ class SystemOverlayManager : Service() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Buttons
         paperclipButton?.setOnClickListener {
             Log.d(TAG, "Paperclip clicked")
         }
@@ -184,7 +161,6 @@ class SystemOverlayManager : Service() {
             }
         }
 
-        // Close on outside touch
         overlayView?.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_OUTSIDE) {
                 hideOverlay()
@@ -192,78 +168,60 @@ class SystemOverlayManager : Service() {
             } else false
         }
 
-        // Now setup keyboard listener AFTER the view is attached
-        setupKeyboardListener()
+        setupKeyboardInsetListener()
     }
 
-    // === KEYBOARD LISTENER & SMOOTH ANIMATION ===
-    private fun setupKeyboardListener() {
-        if (overlayView == null || windowManager == null || layoutParams == null) return
+    /**
+     * Uses WindowInsets.Type.ime() to move overlay smoothly above keyboard.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupKeyboardInsetListener() {
+        if (windowManager == null) return
 
-        // Ensure any previous listener is removed
-        globalLayoutListener?.let {
-            try {
-                overlayView?.viewTreeObserver?.removeOnGlobalLayoutListener(it)
-            } catch (ignored: Exception) {}
-            globalLayoutListener = null
+        val detector = View(this)
+        val detectorParams = WindowManager.LayoutParams(
+            0,
+            0,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        detectorParams.gravity = Gravity.BOTTOM
+
+        try {
+            windowManager?.addView(detector, detectorParams)
+            imeDetectorView = detector
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add IME detector view", e)
+            return
         }
 
-        globalLayoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
-            private var wasKeyboardOpen = false
-            private var lastKeypadHeight = 0
+        detector.setOnApplyWindowInsetsListener { _, insets ->
+            val imeVisible = insets.isVisible(WindowInsets.Type.ime())
+            val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
+            Log.d(TAG, "Keyboard visible=$imeVisible height=$imeHeight")
 
-            override fun onGlobalLayout() {
-                val rootView = overlayView?.rootView ?: return
-                val rect = Rect()
-                rootView.getWindowVisibleDisplayFrame(rect)
-                val screenHeight = rootView.height
-                val keypadHeight = screenHeight - rect.bottom
-                val isKeyboardOpen = keypadHeight > screenHeight * 0.15
+            val targetY = if (imeVisible) imeHeight + 40 else originalY
+            animateOverlayToY(layoutParams?.y ?: originalY, targetY)
 
-                if (isKeyboardOpen != wasKeyboardOpen || keypadHeight != lastKeypadHeight) {
-                    wasKeyboardOpen = isKeyboardOpen
-                    lastKeypadHeight = keypadHeight
-                    Log.d(TAG, "Keyboard changed. open=$isKeyboardOpen, height=$keypadHeight")
-
-                    layoutParams?.let { params ->
-                        val targetY = if (isKeyboardOpen) {
-                            // place overlay above the keyboard: distance from bottom equals keyboard height + margin
-                            // originalY is the normal resting y (distance from bottom)
-                            keypadHeight + 20
-                        } else {
-                            originalY
-                        }
-
-                        // Run smooth animation from current y to targetY
-                        animateOverlayToY(params.y, targetY)
-                    }
-                }
-            }
-        }
-
-        // Attach listener to the root view's observer
-        overlayView?.post {
-            try {
-                overlayView?.viewTreeObserver?.addOnGlobalLayoutListener(globalLayoutListener)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to add global layout listener", e)
-            }
+            insets
         }
     }
 
     private fun animateOverlayToY(fromY: Int, toY: Int) {
-        // Cancel existing animator
         currentAnimator?.cancel()
-
-        // If same, no-op
         if (fromY == toY) return
 
         val animator = ValueAnimator.ofInt(fromY, toY)
-        animator.duration = 200L
+        animator.duration = 250L
         animator.addUpdateListener { valueAnimator ->
-            val animatedY = valueAnimator.animatedValue as Int
             layoutParams?.let { params ->
-                params.y = animatedY
+                params.y = valueAnimator.animatedValue as Int
                 try {
                     windowManager?.updateViewLayout(overlayView, params)
                 } catch (e: Exception) {
@@ -275,7 +233,6 @@ class SystemOverlayManager : Service() {
         currentAnimator = animator
     }
 
-    // === THEME ===
     private fun applyTheme() {
         val overlayCard = overlayView?.findViewById<View>(R.id.overlayCard)
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
@@ -306,7 +263,6 @@ class SystemOverlayManager : Service() {
         micIcon?.setColorFilter(iconTint)
     }
 
-    // === MIC ANIMATION ===
     private fun startListeningAnimation() {
         isListening = true
         micIcon?.let { main ->
@@ -353,20 +309,18 @@ class SystemOverlayManager : Service() {
         }
     }
 
-    // === HIDE & DESTROY ===
     private fun hideOverlay() {
         Log.d(TAG, "Hiding overlay")
         stopListeningHandler.removeCallbacksAndMessages(null)
         currentAnimator?.cancel()
         currentAnimator = null
 
-        // Remove global layout listener
         try {
-            globalLayoutListener?.let { listener ->
-                overlayView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
-            }
-        } catch (ignored: Exception) {}
-        globalLayoutListener = null
+            imeDetectorView?.let { windowManager?.removeView(it) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error removing IME detector", e)
+        }
+        imeDetectorView = null
 
         overlayView?.let { view ->
             try {
@@ -376,6 +330,7 @@ class SystemOverlayManager : Service() {
             }
             overlayView = null
         }
+
         micIcon = null
         micBlurLayer = null
         isListening = false
