@@ -8,7 +8,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Rect
-import android.graphics.RenderEffect 
+import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
 import android.os.Handler
@@ -28,22 +28,20 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.DrawableCompat
 
 class SystemOverlayManager : Service() {
+
     private val TAG = "SystemOverlayManager"
+
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
-    
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private var originalY = 0
+
     private var micIcon: ImageView? = null
     private var micBlurLayer: ImageView? = null
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
-    
-    private var originalY = 0
-    private var layoutParams: WindowManager.LayoutParams? = null
-
-    private var isKeyboardShowing = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -53,10 +51,9 @@ class SystemOverlayManager : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_SHOW_OVERLAY) {
-            showOverlay()
-        } else if (intent?.action == ACTION_HIDE_OVERLAY) {
-            hideOverlay()
+        when (intent?.action) {
+            ACTION_SHOW_OVERLAY -> showOverlay()
+            ACTION_HIDE_OVERLAY -> hideOverlay()
         }
         return START_NOT_STICKY
     }
@@ -70,15 +67,15 @@ class SystemOverlayManager : Service() {
 
         Log.d(TAG, "Showing system overlay")
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
         overlayView = LayoutInflater.from(this).inflate(R.layout.assist_overlay, null)
 
+        // Set overlay width to 96% of screen
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val overlayWidth = (screenWidth * 0.96).toInt()
-        
         overlayView?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
 
+        // Create layout params
         layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -91,22 +88,28 @@ class SystemOverlayManager : Service() {
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                     WindowManager.LayoutParams.FLAG_BLUR_BEHIND,
             PixelFormat.TRANSLUCENT
-        )
-
-        layoutParams?.apply {
+        ).apply {
             gravity = Gravity.BOTTOM
             y = 20
             originalY = y
         }
-        
-        // Enable blur behind for Android 12+
+
+        // Enable blur behind (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             layoutParams?.blurBehindRadius = 25
         }
 
+        // Apply theme
         applyTheme()
+
+        // === CRITICAL: Setup keyboard listener BEFORE adding view ===
         setupKeyboardListener()
 
+        // === Add view to WindowManager ===
+        windowManager?.addView(overlayView, layoutParams)
+        Log.d(TAG, "Overlay view added to window manager")
+
+        // === Initialize views AFTER addView ===
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipButton = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val micContainer = overlayView?.findViewById<View>(R.id.micContainer)
@@ -115,13 +118,12 @@ class SystemOverlayManager : Service() {
         micIcon = overlayView?.findViewById(R.id.micIcon)
         micBlurLayer = overlayView?.findViewById(R.id.micBlurLayer)
 
-        // Make input field focusable and show keyboard
+        // Input field
         inputField?.apply {
             isFocusable = true
             isFocusableInTouchMode = true
             setOnClickListener {
                 requestFocus()
-                // Show keyboard
                 val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
             }
@@ -133,42 +135,32 @@ class SystemOverlayManager : Service() {
                 val hasText = !s.isNullOrEmpty()
                 voiceContainer?.visibility = if (hasText) View.GONE else View.VISIBLE
                 sendButton?.visibility = if (hasText) View.VISIBLE else View.GONE
-                
-                // Stop listening animation if user starts typing
-                if (hasText && isListening) {
-                    stopListeningAnimation()
-                }
+                if (hasText && isListening) stopListeningAnimation()
             }
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Paperclip button (attachment - placeholder functionality)
+        // Buttons
         paperclipButton?.setOnClickListener {
-            Log.d(TAG, "Paperclip clicked - attachment functionality")
+            Log.d(TAG, "Paperclip clicked")
         }
 
-        // Mic button click - start listening animation
         micContainer?.setOnClickListener {
-            Log.d(TAG, "Mic button clicked")
+            Log.d(TAG, "Mic clicked")
             if (!isListening) {
                 startListeningAnimation()
-                // Auto-stop after 5 seconds
-                stopListeningHandler.postDelayed({
-                    stopListeningAnimation()
-                }, 5000)
+                stopListeningHandler.postDelayed({ stopListeningAnimation() }, 5000)
             } else {
                 stopListeningAnimation()
             }
         }
 
-        // Ivory star button click
         voiceContainer?.setOnClickListener {
             Log.d(TAG, "Voice button clicked")
             openMainApp(null)
             hideOverlay()
         }
 
-        // Send button click
         sendButton?.setOnClickListener {
             val query = inputField?.text.toString().trim()
             if (query.isNotEmpty()) {
@@ -178,71 +170,56 @@ class SystemOverlayManager : Service() {
             }
         }
 
-        // Handle outside touches to close
+        // Close on outside touch
         overlayView?.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_OUTSIDE) {
                 hideOverlay()
                 true
-            } else {
-                false
-            }
+            } else false
         }
-
-        windowManager?.addView(overlayView, layoutParams)
-        Log.d(TAG, "Overlay view added to window manager")
     }
 
+    // === KEYBOARD LISTENER (FIXED) ===
     private fun setupKeyboardListener() {
-        overlayView?.viewTreeObserver?.addOnGlobalLayoutListener {
-            val r = Rect()
-            overlayView?.getWindowVisibleDisplayFrame(r)
-            val screenHeight = overlayView?.rootView?.height ?: 0
-            val keypadHeight = screenHeight - r.bottom
+        overlayView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            private var wasKeyboardOpen = false
 
-            if (keypadHeight > screenHeight * 0.15) {   // keyboard visible
-                if (!isKeyboardShowing) {
-                    isKeyboardShowing = true
-                    // Move overlay **above** the keyboard (add a small gap)
-                    layoutParams?.y = keypadHeight + 20
-                    windowManager?.updateViewLayout(overlayView, layoutParams)
-                }
-            } else {
-                if (isKeyboardShowing) {
-                    isKeyboardShowing = false 
-                    layoutParams?.y = originalY 
-                    windowManager?.updateViewLayout(overlayView, layoutParams)
+            override fun onGlobalLayout() {
+                val rect = Rect()
+                overlayView?.getWindowVisibleDisplayFrame(rect)
+                val screenHeight = overlayView?.rootView?.height ?: return
+                val keypadHeight = screenHeight - rect.bottom
+                val isKeyboardOpen = keypadHeight > screenHeight * 0.15
+
+                if (isKeyboardOpen != wasKeyboardOpen) {
+                    wasKeyboardOpen = isKeyboardOpen
+                    Log.d(TAG, "Keyboard: $isKeyboardOpen, height=$keypadHeight")
+
+                    layoutParams?.let { params ->
+                        params.y = if (isKeyboardOpen) keypadHeight + 20 else originalY
+                        try {
+                            windowManager?.updateViewLayout(overlayView, params)
+                            Log.d(TAG, "Overlay moved to y=${params.y}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to update layout", e)
+                        }
+                    }
                 }
             }
-        }
+        })
     }
 
-    private fun adjustOverlayForKeyboard(keyboardHeight: Int) {
-        layoutParams?.let { params ->
-            params.y = keyboardHeight + 20
-            windowManager?.updateViewLayout(overlayView, params)
-            Log.d(TAG, "Adjusted overlay for keyboard: y=${params.y}")
-        }
-    }
-
-    private fun resetOverlayPosition() {
-        layoutParams?.let { params ->
-            params.y = originalY
-            windowManager?.updateViewLayout(overlayView, params)
-            Log.d(TAG, "Reset overlay position: y=${params.y}")
-        }
-    }
-
+    // === THEME ===
     private fun applyTheme() {
         val overlayCard = overlayView?.findViewById<View>(R.id.overlayCard)
-        val inputField   = overlayView?.findViewById<EditText>(R.id.inputField)
+        val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipBtn = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
-        val sendBtn      = overlayView?.findViewById<ImageButton>(R.id.sendButton)
+        val sendBtn = overlayView?.findViewById<ImageButton>(R.id.sendButton)
         val voiceContainer = overlayView?.findViewById<View>(R.id.voiceContainer)
 
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                      Configuration.UI_MODE_NIGHT_YES
 
-        // Card background
         overlayCard?.background = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
@@ -252,47 +229,36 @@ class SystemOverlayManager : Service() {
             if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         )
 
-        // Text colors
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
         inputField?.setTextColor(textColor)
         inputField?.setHintTextColor(hintColor)
 
-        // Icon tint (paper-clip, send, mic)
         val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
         paperclipBtn?.setColorFilter(iconTint)
         sendBtn?.setColorFilter(iconTint)
-        micIcon?.setColorFilter(iconTint)          // <-- mic now tinted correctly
+        micIcon?.setColorFilter(iconTint)
     }
 
+    // === MIC ANIMATION ===
     private fun startListeningAnimation() {
         isListening = true
-
         micIcon?.let { main ->
             micBlurLayer?.let { blur ->
-
-                // Main icon: gradient mic
                 main.setImageResource(R.drawable.ic_mic_gradient)
                 main.clearColorFilter()
 
-                // Blur layer: larger gradient mic
                 blur.setImageResource(R.drawable.ic_mic_blur_gradient)
                 blur.visibility = View.VISIBLE
                 blur.alpha = 0.6f
 
-                // Apply real blur (Android 12+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    blur.setRenderEffect(
-                        RenderEffect.createBlurEffect(16f, 16f, Shader.TileMode.CLAMP)
-                    )
+                    blur.setRenderEffect(RenderEffect.createBlurEffect(16f, 16f, Shader.TileMode.CLAMP))
                 }
 
-                // Pulsate blur layer
                 val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.mic_blur_pulse)
-                blur.startAnimation(pulseAnim)
-
-                // Subtle pulse on main icon
                 val mainPulse = AnimationUtils.loadAnimation(this, R.anim.mic_pulse)
+                blur.startAnimation(pulseAnim)
                 main.startAnimation(mainPulse)
             }
         }
@@ -315,12 +281,13 @@ class SystemOverlayManager : Service() {
 
                 Handler(Looper.getMainLooper()).postDelayed({
                     main.setImageResource(R.drawable.ic_mic)
-                    applyTheme() // re-apply tint
+                    applyTheme()
                 }, 100)
             }
         }
     }
 
+    // === HIDE & DESTROY ===
     private fun hideOverlay() {
         Log.d(TAG, "Hiding overlay")
         stopListeningHandler.removeCallbacksAndMessages(null)
@@ -341,9 +308,7 @@ class SystemOverlayManager : Service() {
             addCategory(Intent.CATEGORY_LAUNCHER)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("fromOverlay", true)
-            if (query != null) {
-                putExtra("query", query)
-            }
+            query?.let { putExtra("query", it) }
         }
         startActivity(intent)
     }

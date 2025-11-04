@@ -1,66 +1,65 @@
-  {
-    "expo": {
-      "name": "ivory",
-      "slug": "ivory",
-      "version": "1.0.0",
-      "orientation": "portrait",
-      "icon": "./assets/icons/adaptive-icon.png",
-      "userInterfaceStyle": "automatic",
-      "scheme": "ivory",
-      "newArchEnabled": true,
-      "ios": {
-        "supportsTablet": true
+{
+  "expo": {
+    "name": "ivory",
+    "slug": "ivory",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/adaptive-icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ivory",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "entryPoint": "./src/overlay-entry.tsx",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
-      "entryPoint": "./src/overlay-entry.tsx",
-      "android": {
-        "adaptiveIcon": {
-          "foregroundImage": "./assets/icons/adaptive-icon.png",
-          "backgroundColor": "#ffffff"
-        },
-        "edgeToEdgeEnabled": true,
-        "predictiveBackGestureEnabled": true,
-        "softwareKeyboardLayoutMode": "pan",
-        "package": "com.ivory.ivory",
-        "jsEngine": "hermes"
-      },
-      "web": {
-        "favicon": "./assets/favicon.png"
-      },
-      "plugins": [
-        [
-          "expo-font"
-        ],
-        [
-          "expo-splash-screen",
-          {
-            "image": "./assets/icons/splash-icon.png",
-            "imageWidth": 200,
-            "resizeMode": "contain",
-            "backgroundColor": "#EDEBFF",
-            "dark": {
-              "image": "./assets/icons/splash-icon.png",
-              "backgroundColor": "#00000D"
-            }
-          }
-        ],
-        "expo-secure-store",
-        [
-          "expo-build-properties",
-          {
-            "android": {
-              "compileSdkVersion": 36,
-              "targetSdkVersion": 36,
-              "buildToolsVersion": "36.0.0",
-              "gradleCommand": ":app:assembleDebug"
-            }
-          }
-        ]
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.ivory.ivory",
+      "jsEngine": "hermes"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-font"
       ],
-      "extra": {
-        "eas": {
-          "projectId": "5f6fe820-a0ba-4247-80c0-a7ddfec0c617"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icons/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#EDEBFF",
+          "dark": {
+            "image": "./assets/icons/splash-icon.png",
+            "backgroundColor": "#00000D"
+          }
         }
-      },
-      "owner": "ivorydevz"
+      ],
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "gradleCommand": ":app:assembleDebug"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "10f94b79-a220-4584-86ca-454939fcf308"
+      }
     }
   }
+}
