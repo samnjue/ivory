@@ -33,7 +33,7 @@ class AssistOverlayActivity : Activity() {
 
         reactRootView = ReactRootView(this)
 
-        // 🧠 Ensure the React context is ready before rendering
+        // Ensure the React context is ready before rendering
         val currentContext: ReactContext? = reactInstanceManager?.currentReactContext
 
         if (currentContext != null) {
