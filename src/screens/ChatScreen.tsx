@@ -371,7 +371,7 @@ export default function ChatScreen({ navigation }: { navigation: any }) {
 			duration: 400,
 		});
 		inputBarTranslateY.value = withSpring(
-			listeningMode ? height : keyboardVisible ? -25 : 0,
+			listeningMode ? height : keyboardVisible ? -15 : 0,
 			{
 				damping: 30,
 				stiffness: 90,

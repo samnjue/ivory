@@ -54,6 +54,10 @@ class AssistOverlayActivity : Activity() {
 
         setContentView(R.layout.assist_overlay)
 
+        // Outside taps dismisses the overlay
+        findViewById<View>(R.id.rootOverlay).setOnClickListener { finishWithoutAnimation() }
+        findViewById<View>(R.id.overlayCard).setOnClickListener { /* no-op */ }
+
         // Bind views
         overlayContainer = findViewById(R.id.overlayContainer)
         overlayCard = findViewById(R.id.overlayCard)
@@ -142,11 +146,16 @@ class AssistOverlayActivity : Activity() {
             }
     }
 
+    private fun Int.dpToPx(): Int {
+        return (this * resources.displayMetrics.density).toInt()
+    }
+
     private fun animateOverlay(imeHeight: Int) {
         currentAnimator?.cancel()
+
         val from = overlayContainer?.translationY ?: 0f
-        // When keyboard is up we move the *container* up by the exact keyboard height
-        val to = if (imeHeight > 0) -imeHeight.toFloat() else 0f
+        val extraLift = 28.dpToPx()
+        val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
 
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
@@ -160,33 +169,43 @@ class AssistOverlayActivity : Activity() {
     // MIC LISTENING ANIMATIONS
     private fun startListeningAnimation() {
         isListening = true
-        micIcon?.setImageResource(R.drawable.ic_mic_gradient)
-        micIcon?.clearColorFilter()
+
+        // Top mic: gradient + pulse
+        micIcon?.apply {
+            setImageResource(R.drawable.ic_mic_gradient)
+            clearColorFilter()
+            startAnimation(AnimationUtils.loadAnimation(this@AssistOverlayActivity, R.anim.mic_pulse))
+        }
+
+        // Bottom mic: blurred glow + pulse
         micBlurLayer?.apply {
-            setImageResource(R.drawable.ic_mic_blur_gradient)
+            setImageResource(R.drawable.ic_mic_gradient)
             visibility = View.VISIBLE
-            alpha = 0.6f
+            alpha = 0.7f
+
+            // Android 12+ blur
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setRenderEffect(RenderEffect.createBlurEffect(16f, 16f, Shader.TileMode.CLAMP))
+                setRenderEffect(RenderEffect.createBlurEffect(20f, 20f, Shader.TileMode.CLAMP))
             }
+
             startAnimation(AnimationUtils.loadAnimation(this@AssistOverlayActivity, R.anim.mic_blur_pulse))
         }
-        micIcon?.startAnimation(AnimationUtils.loadAnimation(this@AssistOverlayActivity, R.anim.mic_pulse))
     }
 
     private fun stopListeningAnimation() {
         stopListeningHandler.removeCallbacksAndMessages(null)
         isListening = false
+
         micIcon?.clearAnimation()
         micBlurLayer?.apply {
             clearAnimation()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setRenderEffect(null)
             visibility = View.GONE
         }
-        // Restore normal mic icon after a tiny delay (smooth fade)
+
         Handler(Looper.getMainLooper()).postDelayed({
             micIcon?.setImageResource(R.drawable.ic_mic)
-            applyTheme()               // re-apply tint according to current theme
+            applyTheme() // re-tint white
         }, 100)
     }
 
