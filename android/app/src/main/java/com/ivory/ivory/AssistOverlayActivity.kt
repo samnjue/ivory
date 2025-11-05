@@ -19,6 +19,9 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
+import android.content.res.Resources
+
+fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
 class AssistOverlayActivity : Activity() {
     private val TAG = "AssistOverlayActivity"
@@ -299,7 +302,7 @@ class AssistOverlayActivity : Activity() {
     private fun animateOverlay(imeHeight: Int) {
         currentAnimator?.cancel()
         val from = overlayContainer?.translationY ?: 0f
-        val extraLift = 28.dpToPx()
+        val extraLift = 28.dpToPx(resources)
         val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
@@ -309,8 +312,6 @@ class AssistOverlayActivity : Activity() {
             start()
         }
     }
-
-    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     // ==================== THEME ====================
     private fun applyTheme() {
