@@ -144,6 +144,16 @@ android {
             }
         }
     }
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            freeCompilerArgs += [
+                "-Xsuppress-version-warnings", 
+                "-Xallow-jsr305",
+                "-Xlint:-deprecation",
+                "-Xlint:-unchecked-cast" 
+            ]
+        }
+    }
 }
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
