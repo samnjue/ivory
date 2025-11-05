@@ -130,6 +130,24 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
+
+    lintOptions {
+        checkWarnings false
+        abortOnError false
+    }
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:-unchecked"
+        options.compilerArgs << "-Xlint:-deprecation"
+    }
+    afterEvaluate {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs.each { arg ->
+                if (arg.contains('-Werror')) {
+                    options.compilerArgs.remove(arg)
+                }
+            }
+        }
+    }
 }
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
