@@ -66,7 +66,7 @@ class SystemOverlayManager : Service() {
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val overlayWidth = (screenWidth * 0.96).toInt()
-        overlayView?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
+        originalInputCard?.findViewById<View>(R.id.overlayCard)?.layoutParams?.width = overlayWidth
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -234,7 +234,7 @@ class SystemOverlayManager : Service() {
     }
 
     private fun applyTheme() {
-        val overlayCard = overlayView?.findViewById<View>(R.id.overlayCard)
+        val overlayCard = overlayView?.findViewById<View>(R.id.originalInputCard)
         val inputField = overlayView?.findViewById<EditText>(R.id.inputField)
         val paperclipBtn = overlayView?.findViewById<ImageButton>(R.id.paperclipButton)
         val sendBtn = overlayView?.findViewById<ImageButton>(R.id.sendButton)

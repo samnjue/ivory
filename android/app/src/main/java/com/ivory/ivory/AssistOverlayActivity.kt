@@ -21,7 +21,7 @@ import android.widget.*
 import androidx.core.content.ContextCompat
 import android.content.res.Resources
 
-fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
+fun Int.dpToPx(resources: Resources): Int = (this * resources.displayMetrics.density).toInt()
 
 class AssistOverlayActivity : Activity() {
     private val TAG = "AssistOverlayActivity"
@@ -104,7 +104,7 @@ class AssistOverlayActivity : Activity() {
     private fun setupUi() {
         // Outside tap
         findViewById<View>(R.id.rootOverlay).setOnClickListener { finishWithoutAnimation() }
-        findViewById<View>(R.id.overlayCard).setOnClickListener { /* no-op */ }
+        findViewById<View>(R.id.originalInputCard).setOnClickListener { /* no-op */ }
 
         // Paper-clip
         paperclipButton?.setOnClickListener { Log.d(TAG, "Paperclip tapped") }
