@@ -132,8 +132,8 @@ android {
     }
 
     lintOptions {
-        checkWarnings false
-        abortOnError false
+        warningsAsErrors false 
+        abortOnPublish false
     }
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:-unchecked"
