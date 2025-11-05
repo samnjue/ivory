@@ -85,6 +85,12 @@ class AssistOverlayActivity : Activity() {
         miniInputBar = findViewById(R.id.miniInputBar)
         miniInputField = miniInputBar?.findViewById(R.id.miniInputField)
         miniSendButton = miniInputBar?.findViewById(R.id.miniSendButton)
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val maxResponseHeight = (screenHeight * 0.8).toInt()  // 80% of screen
+        val maxHeightLayoutParams = responseCard?.layoutParams as? LinearLayout.LayoutParams
+        maxHeightLayoutParams?.height = maxHeightLayoutParams?.height?.coerceAtMost(maxResponseHeight) ?: maxResponseHeight
+        responseCard?.layoutParams = maxHeightLayoutParams
 
         setupUi()
         setupImeInsetListener()

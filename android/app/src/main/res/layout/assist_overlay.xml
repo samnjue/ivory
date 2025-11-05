@@ -28,8 +28,7 @@
             android:layout_marginBottom="8dp"
             android:background="@drawable/overlay_background_light"
             android:elevation="8dp"
-            android:visibility="gone"
-            android:maxHeight="@dimen/max_response_height">
+            android:visibility="gone">
 
             <ScrollView
                 android:id="@+id/responseScrollView"
