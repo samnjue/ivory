@@ -131,10 +131,6 @@ android {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 
-    lintOptions {
-        warningsAsErrors false 
-        abortOnPublish false
-    }
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:-unchecked"
         options.compilerArgs << "-Xlint:-deprecation"
