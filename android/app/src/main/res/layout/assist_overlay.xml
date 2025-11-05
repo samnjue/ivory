@@ -8,16 +8,112 @@
     android:clickable="true"
     android:focusable="true">
 
-    <FrameLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
+    <!-- MAIN OVERLAY CONTAINER -->
+    <LinearLayout
         android:id="@+id/overlayContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
+        android:orientation="vertical"
         android:layout_marginBottom="20dp">
 
+        <!-- RESPONSE CARD (AI Response + Scrollable) -->
         <FrameLayout
-            android:id="@+id/overlayCard"
+            android:id="@+id/responseCard"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/overlay_background_light"
+            android:elevation="8dp"
+            android:visibility="gone"
+            android:maxHeight="@dimen/max_response_height">
+
+            <ScrollView
+                android:id="@+id/responseScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/responseContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- AI Response Title -->
+                    <TextView
+                        android:id="@+id/aiResponseTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AI Response"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/ai_response_title"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- AI Response Text -->
+                    <TextView
+                        android:id="@+id/aiResponseText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@android:color/white"
+                        android:textSize="16sp"
+                        android:lineSpacingExtra="4dp"
+                        android:fontFamily="@font/red_rose" />
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+
+        <!-- THINKING STATE -->
+        <FrameLayout
+            android:id="@+id/thinkingCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/overlay_background_light"
+            android:elevation="8dp"
+            android:visibility="gone"
+            android:padding="16dp">
+
+            <ImageView
+                android:id="@+id/thinkingIvoryStar"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical|start"
+                android:src="@drawable/ivorystar"
+                android:layout_marginEnd="12dp" />
+
+            <TextView
+                android:id="@+id/thinkingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|start"
+                android:text="Thinking"
+                android:textSize="16sp"
+                android:fontFamily="@font/red_rose"
+                android:textColor="@android:color/white"
+                android:layout_marginStart="36dp" />
+        </FrameLayout>
+
+        <!-- MINI INPUT BAR (at bottom) -->
+        <include
+            android:id="@+id/miniInputBar"
+            layout="@layout/mini_assist_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp" />
+
+        <!-- ORIGINAL FULL INPUT (initial state) -->
+        <FrameLayout
+            android:id="@+id/originalInputCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -25,105 +121,7 @@
             android:background="@drawable/overlay_background_light"
             android:elevation="8dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="10dp"
-                android:gravity="center_vertical">
-
-                <!-- Paper-clip -->
-                <ImageButton
-                    android:id="@+id/paperclipButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="@android:color/transparent"
-                    android:src="@drawable/ic_paperclip"
-                    android:scaleType="centerInside"
-                    android:padding="8dp"
-                    android:contentDescription="Attachment" />
-
-                <!-- Input -->
-                <EditText
-                    android:id="@+id/inputField"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    android:hint="Ask anything"
-                    android:textSize="16sp"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:inputType="textMultiLine"
-                    android:maxLines="5"
-                    android:gravity="center_vertical"
-                    android:fontFamily="@font/red_rose"
-                    android:imeOptions="actionSend" />
-
-                <!-- MIC CONTAINER -->
-                <FrameLayout
-                    android:id="@+id/micContainer"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:layout_gravity="center">
-
-                    <!-- Pulsating blurred gradient mic (behind) -->
-                    <ImageView
-                        android:id="@+id/micBlurLayer"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_mic_gradient"
-                        android:scaleType="center"
-                        android:visibility="gone"
-                        android:alpha="0.7" />
-
-                    <!-- Sharp gradient mic (on top) -->
-                    <ImageView
-                        android:id="@+id/micIcon"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_mic"
-                        android:scaleType="center" />
-                </FrameLayout>
-
-                <!-- Ivory-star / Send container -->
-                <FrameLayout
-                    android:layout_width="43dp"
-                    android:layout_height="43dp"
-                    android:layout_gravity="center">
-
-                    <FrameLayout
-                        android:id="@+id/voiceContainer"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/gradient_border_light"
-                        android:clickable="true"
-                        android:focusable="true">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ivorystar" />
-                    </FrameLayout>
-
-                    <ImageButton
-                        android:id="@+id/sendButton"
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
-                        android:layout_gravity="center"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/ic_send"
-                        android:scaleType="fitCenter"
-                        android:visibility="gone"
-                        android:contentDescription="Send" />
-                </FrameLayout>
-            </LinearLayout>
+            <include layout="@layout/full_assist_input" />
         </FrameLayout>
-    </FrameLayout>
+    </LinearLayout>
 </FrameLayout>

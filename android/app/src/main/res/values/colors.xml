@@ -16,4 +16,6 @@
   <color name="text_dark">#FFFFFF</color>
   <color name="hint_light">#888888</color>
   <color name="hint_dark">#AAAAAA</color>
+
+  <color name="ai_response_title">#e63946</color>
 </resources>
