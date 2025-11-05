@@ -66,7 +66,7 @@ class AssistOverlayActivity : Activity() {
 
         // ==== ORIGINAL BINDING ====
         overlayContainer = findViewById(R.id.overlayContainer)
-        overlayCard = findViewById(R.id.overlayCard)
+        overlayCard = findViewById(R.id.originalInputCard)
         inputField = findViewById(R.id.inputField)
         paperclipButton = findViewById(R.id.paperclipButton)
         micContainer = findViewById(R.id.micContainer)
