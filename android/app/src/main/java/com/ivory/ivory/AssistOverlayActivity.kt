@@ -19,16 +19,20 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
-import android.content.res.Resources
-
-fun Int.dpToPx(resources: Resources): Int = (this * resources.displayMetrics.density).toInt()
 
 class AssistOverlayActivity : Activity() {
     private val TAG = "AssistOverlayActivity"
 
-    // ==== ORIGINAL VIEWS ====
+    // Views
     private var overlayContainer: View? = null
-    private var overlayCard: View? = null
+    private var originalInputCard: FrameLayout? = null
+    private var thinkingCard: FrameLayout? = null
+    private var responseContainer: LinearLayout? = null
+    private var responseCard: FrameLayout? = null
+    private var responseScrollView: ScrollView? = null
+    private var miniInputCard: FrameLayout? = null
+    
+    // Original input views
     private var inputField: EditText? = null
     private var paperclipButton: ImageButton? = null
     private var micContainer: View? = null
@@ -36,40 +40,55 @@ class AssistOverlayActivity : Activity() {
     private var micBlurLayer: ImageView? = null
     private var voiceContainer: View? = null
     private var sendButton: ImageButton? = null
-
-    // ==== NEW VIEWS (AI flow) ====
-    private var responseCard: FrameLayout? = null
-    private var thinkingCard: FrameLayout? = null
+    
+    // Thinking views
     private var thinkingIvoryStar: ImageView? = null
     private var thinkingText: TextView? = null
-    private var responseScrollView: ScrollView? = null
+    
+    // Response views
     private var aiResponseText: TextView? = null
-    private var miniInputBar: View? = null
+    private var aiResponseTitle: TextView? = null
+    
+    // Mini input views
     private var miniInputField: EditText? = null
+    private var miniPaperclipButton: ImageButton? = null
+    private var miniMicContainer: View? = null
+    private var miniMicIcon: ImageView? = null
+    private var miniVoiceContainer: View? = null
     private var miniSendButton: ImageButton? = null
 
-    // ==== STATE ====
+    // State
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
     private var currentAnimator: ValueAnimator? = null
     private var lastImeHeight = 0
     private val uiHandler = Handler(Looper.getMainLooper())
+    private var thinkingDotsRunnable: Runnable? = null
 
-    // ==== DUMMY RESPONSE ====
+    // Dummy response
     private val dummyResponse =
-        "Einstein’s field equations are the core of Einstein’s general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
+        "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
+        
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+        
         setContentView(R.layout.assist_overlay)
 
-        // ==== ORIGINAL BINDING ====
+        // Bind views
         overlayContainer = findViewById(R.id.overlayContainer)
-        overlayCard = findViewById(R.id.originalInputCard)
+        originalInputCard = findViewById(R.id.originalInputCard)
+        thinkingCard = findViewById(R.id.thinkingCard)
+        responseContainer = findViewById(R.id.responseContainer)
+        responseCard = findViewById(R.id.responseCard)
+        responseScrollView = findViewById(R.id.responseScrollView)
+        miniInputCard = findViewById(R.id.miniInputCard)
+        
+        // Original input
         inputField = findViewById(R.id.inputField)
         paperclipButton = findViewById(R.id.paperclipButton)
         micContainer = findViewById(R.id.micContainer)
@@ -77,67 +96,65 @@ class AssistOverlayActivity : Activity() {
         micBlurLayer = findViewById(R.id.micBlurLayer)
         voiceContainer = findViewById(R.id.voiceContainer)
         sendButton = findViewById(R.id.sendButton)
-
-        // ==== NEW BINDING ====
-        responseCard = findViewById(R.id.responseCard)
-        thinkingCard = findViewById(R.id.thinkingCard)
+        
+        // Thinking
         thinkingIvoryStar = findViewById(R.id.thinkingIvoryStar)
         thinkingText = findViewById(R.id.thinkingText)
-        responseScrollView = findViewById(R.id.responseScrollView)
+        
+        // Response
         aiResponseText = findViewById(R.id.aiResponseText)
-        miniInputBar = findViewById(R.id.miniInputBar)
-        miniInputField = miniInputBar?.findViewById(R.id.miniInputField)
-        miniSendButton = miniInputBar?.findViewById(R.id.miniSendButton)
-        val displayMetrics = resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val maxResponseHeight = (screenHeight * 0.8).toInt()  // 80% of screen
-        val maxHeightLayoutParams = responseCard?.layoutParams as? LinearLayout.LayoutParams
-        maxHeightLayoutParams?.height = maxHeightLayoutParams?.height?.coerceAtMost(maxResponseHeight) ?: maxResponseHeight
-        responseCard?.layoutParams = maxHeightLayoutParams
+        aiResponseTitle = findViewById(R.id.aiResponseTitle)
+        
+        // Mini input
+        miniInputField = findViewById(R.id.miniInputField)
+        miniPaperclipButton = findViewById(R.id.miniPaperclipButton)
+        miniMicContainer = findViewById(R.id.miniMicContainer)
+        miniMicIcon = findViewById(R.id.miniMicIcon)
+        miniVoiceContainer = findViewById(R.id.miniVoiceContainer)
+        miniSendButton = findViewById(R.id.miniSendButton)
 
+        setupResponseScrollViewHeight()
         setupUi()
         setupImeInsetListener()
         applyTheme()
     }
 
-    // ==================== ORIGINAL UI SETUP ====================
+    private fun setupResponseScrollViewHeight() {
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val maxResponseHeight = (screenHeight * 0.8).toInt()
+        
+        responseScrollView?.post {
+            val layoutParams = responseScrollView?.layoutParams
+            layoutParams?.height = maxResponseHeight
+            responseScrollView?.layoutParams = layoutParams
+        }
+    }
+
     private fun setupUi() {
-        // Outside tap
+        // Outside tap dismisses
         findViewById<View>(R.id.rootOverlay).setOnClickListener { finishWithoutAnimation() }
-        findViewById<View>(R.id.originalInputCard).setOnClickListener { /* no-op */ }
+        originalInputCard?.setOnClickListener { /* no-op */ }
+        responseCard?.setOnClickListener { /* no-op */ }
+        miniInputCard?.setOnClickListener { /* no-op */ }
 
-        // Paper-clip
+        // Original input setup
         paperclipButton?.setOnClickListener { Log.d(TAG, "Paperclip tapped") }
-
-        // Ivory-star (voice)
+        
         voiceContainer?.setOnClickListener {
             openMainApp(null)
             finishWithoutAnimation()
         }
-
-        // ==== ORIGINAL SEND (kept) ====
+        
         sendButton?.setOnClickListener {
             val text = inputField?.text?.toString()?.trim() ?: ""
             if (text.isNotEmpty()) {
-                // **New behaviour** – show AI flow instead of opening main app
                 hideKeyboard()
+                inputField?.text?.clear()
                 startThinkingPhase()
-                uiHandler.postDelayed({ showResponsePhase() }, 5000)
             }
         }
-
-        // ==== MINI SEND (new) ====
-        miniSendButton?.setOnClickListener {
-            val text = miniInputField?.text?.toString()?.trim() ?: ""
-            if (text.isNotEmpty()) {
-                hideKeyboard()
-                miniInputField?.text?.clear()
-                startThinkingPhase()
-                uiHandler.postDelayed({ showResponsePhase() }, 5000)
-            }
-        }
-
-        // Mic listening
+        
         micContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation()
@@ -146,15 +163,14 @@ class AssistOverlayActivity : Activity() {
                 stopListeningAnimation()
             }
         }
-
-        // Input focus + icon switch
+        
         inputField?.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
             }
         }
-
+        
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -166,56 +182,82 @@ class AssistOverlayActivity : Activity() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Mini input text watcher
+        // Mini input setup
+        miniPaperclipButton?.setOnClickListener { Log.d(TAG, "Mini paperclip tapped") }
+        
+        miniVoiceContainer?.setOnClickListener {
+            openMainApp(null)
+            finishWithoutAnimation()
+        }
+        
+        miniSendButton?.setOnClickListener {
+            val text = miniInputField?.text?.toString()?.trim() ?: ""
+            if (text.isNotEmpty()) {
+                hideKeyboard()
+                miniInputField?.text?.clear()
+                startThinkingPhase()
+            }
+        }
+        
+        miniMicContainer?.setOnClickListener {
+            Log.d(TAG, "Mini mic tapped")
+        }
+        
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                miniSendButton?.visibility = if (!s.isNullOrEmpty()) View.VISIBLE else View.GONE
+                val hasText = !s.isNullOrEmpty()
+                miniVoiceContainer?.visibility = if (hasText) View.GONE else View.VISIBLE
+                miniSendButton?.visibility = if (hasText) View.VISIBLE else View.GONE
             }
             override fun afterTextChanged(s: Editable?) {}
         })
-
-        // Outside-tap dismiss
-        findViewById<View>(R.id.rootOverlay).setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_OUTSIDE) {
-                finishWithoutAnimation()
-                true
-            } else false
-        }
-
-        // Start spinning star for thinking card (once)
-        thinkingIvoryStar?.let { startSpinningAnimation(it) }
     }
 
-    // ==================== THINKING → RESPONSE FLOW ====================
     private fun startThinkingPhase() {
-        // Fade out original input
-        overlayCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
-            overlayCard?.visibility = View.GONE
+        // Stop any existing animations
+        thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
+        
+        // Fade out whatever is showing
+        originalInputCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            originalInputCard?.visibility = View.GONE
+            originalInputCard?.alpha = 1f
         }?.start()
-
+        
+        responseContainer?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            responseContainer?.visibility = View.GONE
+            responseContainer?.alpha = 1f
+        }?.start()
+        
         // Show thinking card
-        thinkingCard?.visibility = View.VISIBLE
-        thinkingCard?.alpha = 0f
-        thinkingCard?.animate()?.alpha(1f)?.setDuration(200)?.start()
-
-        animateThinkingDots()
+        uiHandler.postDelayed({
+            thinkingCard?.visibility = View.VISIBLE
+            thinkingCard?.alpha = 0f
+            thinkingCard?.animate()?.alpha(1f)?.setDuration(200)?.start()
+            
+            startSpinningAnimation()
+            animateThinkingDots()
+            
+            // After 5 seconds, show response
+            uiHandler.postDelayed({ showResponsePhase() }, 5000)
+        }, 200)
     }
 
     private fun showResponsePhase() {
+        // Stop thinking animations
+        thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
+        thinkingIvoryStar?.clearAnimation()
+        
         // Fade out thinking
         thinkingCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
             thinkingCard?.visibility = View.GONE
-
-            // Show response + mini input
-            responseCard?.visibility = View.VISIBLE
-            responseCard?.alpha = 0f
-            responseCard?.animate()?.alpha(1f)?.setDuration(300)?.start()
-
-            miniInputBar?.visibility = View.VISIBLE
-            miniInputBar?.alpha = 0f
-            miniInputBar?.animate()?.alpha(1f)?.setDuration(300)?.start()
-
+            thinkingCard?.alpha = 1f
+            
+            // Show response container
+            responseContainer?.visibility = View.VISIBLE
+            responseContainer?.alpha = 0f
+            responseContainer?.animate()?.alpha(1f)?.setDuration(300)?.start()
+            
             startTypewriterEffect()
         }?.start()
     }
@@ -224,11 +266,14 @@ class AssistOverlayActivity : Activity() {
         aiResponseText?.text = ""
         val words = dummyResponse.split(" ")
         var delay = 0L
+        
         for (word in words) {
             uiHandler.postDelayed({
                 val cur = aiResponseText?.text?.toString() ?: ""
                 aiResponseText?.text = if (cur.isEmpty()) word else "$cur $word"
-                responseScrollView?.fullScroll(View.FOCUS_DOWN)
+                responseScrollView?.post {
+                    responseScrollView?.fullScroll(View.FOCUS_DOWN)
+                }
             }, delay)
             delay += 60
         }
@@ -237,22 +282,25 @@ class AssistOverlayActivity : Activity() {
     private fun animateThinkingDots() {
         val dots = listOf("", ".", "..", "...")
         var idx = 0
-        val runnable = object : Runnable {
+        thinkingDotsRunnable = object : Runnable {
             override fun run() {
-                thinkingText?.text = "Thinking${dots[idx]}"
-                idx = (idx + 1) % dots.size
-                uiHandler.postDelayed(this, 500)
+                if (thinkingCard?.visibility == View.VISIBLE) {
+                    thinkingText?.text = "Thinking${dots[idx]}"
+                    idx = (idx + 1) % dots.size
+                    uiHandler.postDelayed(this, 500)
+                }
             }
         }
-        uiHandler.post(runnable)
+        thinkingDotsRunnable?.let { uiHandler.post(it) }
     }
 
-    private fun startSpinningAnimation(view: ImageView) {
-        val anim = AnimationUtils.loadAnimation(this, R.anim.rotate_indefinite)
-        view.startAnimation(anim)
+    private fun startSpinningAnimation() {
+        thinkingIvoryStar?.let { star ->
+            val anim = AnimationUtils.loadAnimation(this, R.anim.rotate_indefinite)
+            star.startAnimation(anim)
+        }
     }
 
-    // ==================== ORIGINAL MIC ANIMATIONS ====================
     private fun startListeningAnimation() {
         isListening = true
         micIcon?.apply {
@@ -286,7 +334,6 @@ class AssistOverlayActivity : Activity() {
         }, 100)
     }
 
-    // ==================== KEYBOARD INSET ====================
     private fun setupImeInsetListener() {
         findViewById<View>(R.id.rootOverlay)
             .setOnApplyWindowInsetsListener { _, insets ->
@@ -302,8 +349,9 @@ class AssistOverlayActivity : Activity() {
     private fun animateOverlay(imeHeight: Int) {
         currentAnimator?.cancel()
         val from = overlayContainer?.translationY ?: 0f
-        val extraLift = 28.dpToPx(resources)
+        val extraLift = (28 * resources.displayMetrics.density).toInt()
         val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
+        
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
             addUpdateListener {
@@ -313,40 +361,50 @@ class AssistOverlayActivity : Activity() {
         }
     }
 
-    // ==================== THEME ====================
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
         val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        val titleColor = if (isDark) Color.parseColor("#6B9AFF") else Color.parseColor("#5080E8")
 
+        // Text colors
         inputField?.setTextColor(textColor)
         inputField?.setHintTextColor(hintColor)
         miniInputField?.setTextColor(textColor)
         miniInputField?.setHintTextColor(hintColor)
+        thinkingText?.setTextColor(textColor)
+        aiResponseText?.setTextColor(textColor)
+        aiResponseTitle?.setTextColor(titleColor)
 
+        // Icon tints
         paperclipButton?.setColorFilter(iconTint)
         sendButton?.setColorFilter(iconTint)
+        micIcon?.setColorFilter(iconTint)
+        miniPaperclipButton?.setColorFilter(iconTint)
         miniSendButton?.setColorFilter(iconTint)
-        findViewById<ImageButton>(R.id.miniPaperclipButton)?.setColorFilter(iconTint)
+        miniMicIcon?.setColorFilter(iconTint)
 
+        // Backgrounds
         val bg = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
         )
-        overlayCard?.background = bg
-        responseCard?.background = bg
+        originalInputCard?.background = bg
         thinkingCard?.background = bg
-        miniInputBar?.background = bg
+        responseCard?.background = bg
+        miniInputCard?.background = bg
 
-        voiceContainer?.background = ContextCompat.getDrawable(
+        // Gradient borders
+        val gradientBorder = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         )
+        voiceContainer?.background = gradientBorder
+        miniVoiceContainer?.background = gradientBorder
     }
 
-    // ==================== NAVIGATION ====================
     private fun openMainApp(query: String?) {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -382,5 +440,6 @@ class AssistOverlayActivity : Activity() {
         stopListeningHandler.removeCallbacksAndMessages(null)
         uiHandler.removeCallbacksAndMessages(null)
         currentAnimator?.cancel()
+        thinkingIvoryStar?.clearAnimation()
     }
 }
