@@ -27,9 +27,9 @@ class AssistOverlayActivity : Activity() {
     private var overlayContainer: View? = null
     private var originalInputCard: FrameLayout? = null
     private var thinkingCard: FrameLayout? = null
-    private var responseContainer: LinearLayout? = null
     private var responseCard: FrameLayout? = null
     private var responseScrollView: ScrollView? = null
+    private var miniInputContainer: FrameLayout? = null
     private var miniInputCard: FrameLayout? = null
     
     // Original input views
@@ -64,6 +64,7 @@ class AssistOverlayActivity : Activity() {
     private var lastImeHeight = 0
     private val uiHandler = Handler(Looper.getMainLooper())
     private var thinkingDotsRunnable: Runnable? = null
+    private var responseCardInitialBottom = 0
 
     // Dummy response
     private val dummyResponse =
@@ -74,7 +75,7 @@ class AssistOverlayActivity : Activity() {
         Log.d(TAG, "onCreate")
         
         window.setBackgroundDrawableResource(android.R.color.transparent)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         
         setContentView(R.layout.assist_overlay)
@@ -83,9 +84,9 @@ class AssistOverlayActivity : Activity() {
         overlayContainer = findViewById(R.id.overlayContainer)
         originalInputCard = findViewById(R.id.originalInputCard)
         thinkingCard = findViewById(R.id.thinkingCard)
-        responseContainer = findViewById(R.id.responseContainer)
         responseCard = findViewById(R.id.responseCard)
         responseScrollView = findViewById(R.id.responseScrollView)
+        miniInputContainer = findViewById(R.id.miniInputContainer)
         miniInputCard = findViewById(R.id.miniInputCard)
         
         // Original input
@@ -122,7 +123,7 @@ class AssistOverlayActivity : Activity() {
     private fun setupResponseScrollViewHeight() {
         val displayMetrics = resources.displayMetrics
         val screenHeight = displayMetrics.heightPixels
-        val maxResponseHeight = (screenHeight * 0.8).toInt()
+        val maxResponseHeight = (screenHeight * 0.65).toInt()
         
         responseScrollView?.post {
             val layoutParams = responseScrollView?.layoutParams
@@ -203,6 +204,13 @@ class AssistOverlayActivity : Activity() {
             Log.d(TAG, "Mini mic tapped")
         }
         
+        miniInputField?.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(miniInputField, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+        
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -224,9 +232,9 @@ class AssistOverlayActivity : Activity() {
             originalInputCard?.alpha = 1f
         }?.start()
         
-        responseContainer?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
-            responseContainer?.visibility = View.GONE
-            responseContainer?.alpha = 1f
+        responseCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            responseCard?.visibility = View.GONE
+            responseCard?.alpha = 1f
         }?.start()
         
         // Show thinking card
@@ -253,10 +261,17 @@ class AssistOverlayActivity : Activity() {
             thinkingCard?.visibility = View.GONE
             thinkingCard?.alpha = 1f
             
-            // Show response container
-            responseContainer?.visibility = View.VISIBLE
-            responseContainer?.alpha = 0f
-            responseContainer?.animate()?.alpha(1f)?.setDuration(300)?.start()
+            // Show response card
+            responseCard?.visibility = View.VISIBLE
+            responseCard?.alpha = 0f
+            responseCard?.animate()?.alpha(1f)?.setDuration(300)?.withEndAction {
+                // Store initial position
+                responseCard?.post {
+                    val location = IntArray(2)
+                    responseCard?.getLocationOnScreen(location)
+                    responseCardInitialBottom = location[1] + (responseCard?.height ?: 0)
+                }
+            }?.start()
             
             startTypewriterEffect()
         }?.start()
@@ -340,10 +355,64 @@ class AssistOverlayActivity : Activity() {
                 val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
                 if (imeHeight != lastImeHeight) {
                     lastImeHeight = imeHeight
-                    animateOverlay(imeHeight)
+                    
+                    // Only animate if response card is visible
+                    if (responseCard?.visibility == View.VISIBLE) {
+                        animateResponseCardForKeyboard(imeHeight)
+                    } else {
+                        animateOverlay(imeHeight)
+                    }
                 }
                 insets
             }
+    }
+
+    private fun animateResponseCardForKeyboard(imeHeight: Int) {
+        currentAnimator?.cancel()
+        
+        if (imeHeight > 0) {
+            // Keyboard is showing - shrink the response card
+            val location = IntArray(2)
+            responseCard?.getLocationOnScreen(location)
+            val currentBottom = location[1] + (responseCard?.height ?: 0)
+            
+            // Calculate how much we need to move up
+            val screenHeight = resources.displayMetrics.heightPixels
+            val targetBottom = screenHeight - imeHeight - (20 * resources.displayMetrics.density).toInt()
+            val moveUp = currentBottom - targetBottom
+            
+            // Shrink the scroll view
+            val currentScrollHeight = responseScrollView?.height ?: 0
+            val newScrollHeight = Math.max(100, currentScrollHeight - moveUp)
+            
+            currentAnimator = ValueAnimator.ofInt(currentScrollHeight, newScrollHeight).apply {
+                duration = 250
+                addUpdateListener {
+                    val height = it.animatedValue as Int
+                    val layoutParams = responseScrollView?.layoutParams
+                    layoutParams?.height = height
+                    responseScrollView?.layoutParams = layoutParams
+                }
+                start()
+            }
+        } else {
+            // Keyboard is hiding - restore the original height
+            val displayMetrics = resources.displayMetrics
+            val screenHeight = displayMetrics.heightPixels
+            val maxResponseHeight = (screenHeight * 0.65).toInt()
+            
+            val currentHeight = responseScrollView?.height ?: 0
+            currentAnimator = ValueAnimator.ofInt(currentHeight, maxResponseHeight).apply {
+                duration = 250
+                addUpdateListener {
+                    val height = it.animatedValue as Int
+                    val layoutParams = responseScrollView?.layoutParams
+                    layoutParams?.height = height
+                    responseScrollView?.layoutParams = layoutParams
+                }
+                start()
+            }
+        }
     }
 
     private fun animateOverlay(imeHeight: Int) {
@@ -394,7 +463,6 @@ class AssistOverlayActivity : Activity() {
         originalInputCard?.background = bg
         thinkingCard?.background = bg
         responseCard?.background = bg
-        miniInputCard?.background = bg
 
         // Gradient borders
         val gradientBorder = ContextCompat.getDrawable(

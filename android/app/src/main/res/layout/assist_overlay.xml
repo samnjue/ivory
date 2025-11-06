@@ -18,23 +18,21 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp">
 
-        <!-- RESPONSE CONTAINER (AI Response + Mini Input) -->
-        <LinearLayout
-            android:id="@+id/responseContainer"
+        <!-- UNIFIED RESPONSE CARD (AI Response + Mini Input) -->
+        <FrameLayout
+            android:id="@+id/responseCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:background="@drawable/overlay_background_light"
+            android:elevation="8dp"
             android:visibility="gone">
 
-            <!-- RESPONSE CARD -->
-            <FrameLayout
-                android:id="@+id/responseCard"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/overlay_background_light"
-                android:elevation="8dp"
-                android:layout_marginBottom="8dp">
+                android:orientation="vertical">
 
+                <!-- RESPONSE SCROLL CONTAINER -->
                 <ScrollView
                     android:id="@+id/responseScrollView"
                     android:layout_width="match_parent"
@@ -72,101 +70,111 @@
                             android:fontFamily="@font/red_rose" />
                     </LinearLayout>
                 </ScrollView>
-            </FrameLayout>
 
-            <!-- MINI INPUT BAR -->
-            <FrameLayout
-                android:id="@+id/miniInputCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/overlay_background_light"
-                android:elevation="8dp">
-
-                <LinearLayout
+                <!-- MINI INPUT BAR (inside the response card) -->
+                <FrameLayout
+                    android:id="@+id/miniInputContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="8dp"
-                    android:gravity="center_vertical">
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="12dp"
+                    android:paddingTop="8dp">
 
-                    <ImageButton
-                        android:id="@+id/miniPaperclipButton"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/ic_paperclip"
-                        android:scaleType="centerInside"
-                        android:padding="6dp"
-                        android:contentDescription="Attachment" />
-
-                    <EditText
-                        android:id="@+id/miniInputField"
-                        android:layout_width="0dp"
+                    <FrameLayout
+                        android:id="@+id/miniInputCard"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="@android:color/transparent"
-                        android:hint="Ask anything"
-                        android:textSize="14sp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:inputType="textMultiLine"
-                        android:maxLines="3"
-                        android:gravity="center_vertical"
-                        android:fontFamily="@font/red_rose"
-                        android:imeOptions="actionSend" />
+                        android:background="@drawable/mini_input_background"
+                        android:elevation="2dp">
 
-                    <FrameLayout
-                        android:id="@+id/miniMicContainer"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_marginEnd="4dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:layout_gravity="center">
-
-                        <ImageView
-                            android:id="@+id/miniMicIcon"
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_mic"
-                            android:scaleType="center" />
-                    </FrameLayout>
-
-                    <FrameLayout
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_gravity="center">
-
-                        <FrameLayout
-                            android:id="@+id/miniVoiceContainer"
+                        <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:background="@drawable/gradient_border_light"
-                            android:clickable="true"
-                            android:focusable="true">
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="6dp"
+                            android:gravity="center_vertical">
 
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_gravity="center"
-                                android:src="@drawable/ivorystar" />
-                        </FrameLayout>
+                            <ImageButton
+                                android:id="@+id/miniPaperclipButton"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:background="@android:color/transparent"
+                                android:src="@drawable/ic_paperclip"
+                                android:scaleType="centerInside"
+                                android:padding="4dp"
+                                android:contentDescription="Attachment" />
 
-                        <ImageButton
-                            android:id="@+id/miniSendButton"
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:background="@android:color/transparent"
-                            android:src="@drawable/ic_send"
-                            android:scaleType="fitCenter"
-                            android:visibility="gone"
-                            android:contentDescription="Send" />
+                            <EditText
+                                android:id="@+id/miniInputField"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:background="@android:color/transparent"
+                                android:hint="Ask anything"
+                                android:textSize="14sp"
+                                android:paddingStart="6dp"
+                                android:paddingEnd="6dp"
+                                android:inputType="textMultiLine"
+                                android:maxLines="3"
+                                android:gravity="center_vertical"
+                                android:fontFamily="@font/red_rose"
+                                android:imeOptions="actionSend" />
+
+                            <FrameLayout
+                                android:id="@+id/miniMicContainer"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:layout_marginEnd="4dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_gravity="center">
+
+                                <ImageView
+                                    android:id="@+id/miniMicIcon"
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:layout_gravity="center"
+                                    android:src="@drawable/ic_mic"
+                                    android:scaleType="center" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:layout_gravity="center">
+
+                                <FrameLayout
+                                    android:id="@+id/miniVoiceContainer"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/gradient_border_light"
+                                    android:clickable="true"
+                                    android:focusable="true">
+
+                                    <ImageView
+                                        android:layout_width="18dp"
+                                        android:layout_height="18dp"
+                                        android:layout_gravity="center"
+                                        android:src="@drawable/ivorystar" />
+                                </FrameLayout>
+
+                                <ImageButton
+                                    android:id="@+id/miniSendButton"
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:layout_gravity="center"
+                                    android:background="@android:color/transparent"
+                                    android:src="@drawable/ic_send"
+                                    android:scaleType="fitCenter"
+                                    android:visibility="gone"
+                                    android:contentDescription="Send" />
+                            </FrameLayout>
+                        </LinearLayout>
                     </FrameLayout>
-                </LinearLayout>
-            </FrameLayout>
-        </LinearLayout>
+                </FrameLayout>
+            </LinearLayout>
+        </FrameLayout>
 
         <!-- THINKING STATE -->
         <FrameLayout
