@@ -460,7 +460,7 @@ class AssistOverlayActivity : Activity() {
         // Mini input background
         val miniBg = ContextCompat.getDrawable(
             this,
-            if (isDark) R.drawable.mini_input_background_dark else R.drawable.mini_input_background_light
+            if (isDark) R.drawable.overlay_background_dark else R.overlay_background_light
         )
         miniInputCard?.background = miniBg
 
