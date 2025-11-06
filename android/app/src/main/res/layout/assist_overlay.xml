@@ -37,7 +37,6 @@
                     android:id="@+id/responseScrollView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:maxHeight="0dp"
                     android:fillViewport="false"
                     android:scrollbars="vertical">
 
@@ -48,17 +47,30 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <!-- AI Response Title -->
-                        <TextView
-                            android:id="@+id/aiResponseTitle"
+                        <!-- AI Response Title with Gradient Icon -->
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="AI Response"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="#6B9AFF"
-                            android:layout_marginBottom="8dp"
-                            android:fontFamily="@font/red_rose" />
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/aiResponseIcon"
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:src="@drawable/ic_sparkles"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/aiResponseTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="AI Response"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:fontFamily="@font/red_rose" />
+                        </LinearLayout>
 
                         <!-- AI Response Text -->
                         <TextView
@@ -76,8 +88,8 @@
                     android:id="@+id/miniInputContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
                     android:paddingBottom="12dp"
                     android:paddingTop="8dp">
 
@@ -85,24 +97,24 @@
                         android:id="@+id/miniInputCard"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/overlay_background"
+                        android:background="@drawable/overlay_background_light"
                         android:elevation="2dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="6dp"
+                            android:padding="8dp"
                             android:gravity="center_vertical">
 
                             <ImageButton
                                 android:id="@+id/miniPaperclipButton"
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:background="@android:color/transparent"
                                 android:src="@drawable/ic_paperclip"
                                 android:scaleType="centerInside"
-                                android:padding="4dp"
+                                android:padding="6dp"
                                 android:contentDescription="Attachment" />
 
                             <EditText
@@ -112,9 +124,9 @@
                                 android:layout_weight="1"
                                 android:background="@android:color/transparent"
                                 android:hint="Ask anything"
-                                android:textSize="14sp"
-                                android:paddingStart="6dp"
-                                android:paddingEnd="6dp"
+                                android:textSize="15sp"
+                                android:paddingStart="8dp"
+                                android:paddingEnd="8dp"
                                 android:inputType="textMultiLine"
                                 android:maxLines="3"
                                 android:gravity="center_vertical"
@@ -123,25 +135,25 @@
 
                             <FrameLayout
                                 android:id="@+id/miniMicContainer"
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:layout_marginEnd="4dp"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:layout_marginEnd="6dp"
                                 android:clickable="true"
                                 android:focusable="true"
                                 android:layout_gravity="center">
 
                                 <ImageView
                                     android:id="@+id/miniMicIcon"
-                                    android:layout_width="20dp"
-                                    android:layout_height="20dp"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
                                     android:layout_gravity="center"
                                     android:src="@drawable/ic_mic"
                                     android:scaleType="center" />
                             </FrameLayout>
 
                             <FrameLayout
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
                                 android:layout_gravity="center">
 
                                 <FrameLayout
@@ -153,16 +165,16 @@
                                     android:focusable="true">
 
                                     <ImageView
-                                        android:layout_width="18dp"
-                                        android:layout_height="18dp"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"
                                         android:layout_gravity="center"
                                         android:src="@drawable/ivorystar" />
                                 </FrameLayout>
 
                                 <ImageButton
                                     android:id="@+id/miniSendButton"
-                                    android:layout_width="20dp"
-                                    android:layout_height="20dp"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
                                     android:layout_gravity="center"
                                     android:background="@android:color/transparent"
                                     android:src="@drawable/ic_send"

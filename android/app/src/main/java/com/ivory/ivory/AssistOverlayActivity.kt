@@ -4,9 +4,7 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Color
-import android.graphics.RenderEffect
-import android.graphics.Shader
+import android.graphics.*
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -48,6 +46,7 @@ class AssistOverlayActivity : Activity() {
     // Response views
     private var aiResponseText: TextView? = null
     private var aiResponseTitle: TextView? = null
+    private var aiResponseIcon: ImageView? = null
     
     // Mini input views
     private var miniInputField: EditText? = null
@@ -64,7 +63,6 @@ class AssistOverlayActivity : Activity() {
     private var lastImeHeight = 0
     private val uiHandler = Handler(Looper.getMainLooper())
     private var thinkingDotsRunnable: Runnable? = null
-    private var responseCardInitialBottom = 0
 
     // Dummy response
     private val dummyResponse =
@@ -75,7 +73,7 @@ class AssistOverlayActivity : Activity() {
         Log.d(TAG, "onCreate")
         
         window.setBackgroundDrawableResource(android.R.color.transparent)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         
         setContentView(R.layout.assist_overlay)
@@ -105,6 +103,7 @@ class AssistOverlayActivity : Activity() {
         // Response
         aiResponseText = findViewById(R.id.aiResponseText)
         aiResponseTitle = findViewById(R.id.aiResponseTitle)
+        aiResponseIcon = findViewById(R.id.aiResponseIcon)
         
         // Mini input
         miniInputField = findViewById(R.id.miniInputField)
@@ -114,22 +113,10 @@ class AssistOverlayActivity : Activity() {
         miniVoiceContainer = findViewById(R.id.miniVoiceContainer)
         miniSendButton = findViewById(R.id.miniSendButton)
 
-        setupResponseScrollViewHeight()
         setupUi()
         setupImeInsetListener()
         applyTheme()
-    }
-
-    private fun setupResponseScrollViewHeight() {
-        val displayMetrics = resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val maxResponseHeight = (screenHeight * 0.65).toInt()
-        
-        responseScrollView?.post {
-            val layoutParams = responseScrollView?.layoutParams
-            layoutParams?.height = maxResponseHeight
-            responseScrollView?.layoutParams = layoutParams
-        }
+        applyGradientToTitle()
     }
 
     private fun setupUi() {
@@ -264,14 +251,7 @@ class AssistOverlayActivity : Activity() {
             // Show response card
             responseCard?.visibility = View.VISIBLE
             responseCard?.alpha = 0f
-            responseCard?.animate()?.alpha(1f)?.setDuration(300)?.withEndAction {
-                // Store initial position
-                responseCard?.post {
-                    val location = IntArray(2)
-                    responseCard?.getLocationOnScreen(location)
-                    responseCardInitialBottom = location[1] + (responseCard?.height ?: 0)
-                }
-            }?.start()
+            responseCard?.animate()?.alpha(1f)?.setDuration(300)?.start()
             
             startTypewriterEffect()
         }?.start()
@@ -286,12 +266,38 @@ class AssistOverlayActivity : Activity() {
             uiHandler.postDelayed({
                 val cur = aiResponseText?.text?.toString() ?: ""
                 aiResponseText?.text = if (cur.isEmpty()) word else "$cur $word"
+                
+                // Dynamically adjust scroll view height as content grows
                 responseScrollView?.post {
+                    updateResponseCardHeight()
                     responseScrollView?.fullScroll(View.FOCUS_DOWN)
                 }
             }, delay)
             delay += 60
         }
+    }
+
+    private fun updateResponseCardHeight() {
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val maxHeight = (screenHeight * 0.8).toInt()
+        
+        // Measure the actual content height
+        aiResponseText?.measure(
+            View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.UNSPECIFIED
+        )
+        
+        val contentHeight = (aiResponseText?.measuredHeight ?: 0) + 
+                           (16 * resources.displayMetrics.density * 2).toInt() + // padding
+                           (miniInputContainer?.height ?: 0) + 
+                           100 // extra space for title
+        
+        val targetHeight = Math.min(contentHeight, maxHeight)
+        
+        val layoutParams = responseScrollView?.layoutParams
+        layoutParams?.height = targetHeight
+        responseScrollView?.layoutParams = layoutParams
     }
 
     private fun animateThinkingDots() {
@@ -355,70 +361,16 @@ class AssistOverlayActivity : Activity() {
                 val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
                 if (imeHeight != lastImeHeight) {
                     lastImeHeight = imeHeight
-                    
-                    // Only animate if response card is visible
-                    if (responseCard?.visibility == View.VISIBLE) {
-                        animateResponseCardForKeyboard(imeHeight)
-                    } else {
-                        animateOverlay(imeHeight)
-                    }
+                    animateOverlayForKeyboard(imeHeight)
                 }
                 insets
             }
     }
 
-    private fun animateResponseCardForKeyboard(imeHeight: Int) {
-        currentAnimator?.cancel()
-        
-        if (imeHeight > 0) {
-            // Keyboard is showing - shrink the response card
-            val location = IntArray(2)
-            responseCard?.getLocationOnScreen(location)
-            val currentBottom = location[1] + (responseCard?.height ?: 0)
-            
-            // Calculate how much we need to move up
-            val screenHeight = resources.displayMetrics.heightPixels
-            val targetBottom = screenHeight - imeHeight - (20 * resources.displayMetrics.density).toInt()
-            val moveUp = currentBottom - targetBottom
-            
-            // Shrink the scroll view
-            val currentScrollHeight = responseScrollView?.height ?: 0
-            val newScrollHeight = Math.max(100, currentScrollHeight - moveUp)
-            
-            currentAnimator = ValueAnimator.ofInt(currentScrollHeight, newScrollHeight).apply {
-                duration = 250
-                addUpdateListener {
-                    val height = it.animatedValue as Int
-                    val layoutParams = responseScrollView?.layoutParams
-                    layoutParams?.height = height
-                    responseScrollView?.layoutParams = layoutParams
-                }
-                start()
-            }
-        } else {
-            // Keyboard is hiding - restore the original height
-            val displayMetrics = resources.displayMetrics
-            val screenHeight = displayMetrics.heightPixels
-            val maxResponseHeight = (screenHeight * 0.65).toInt()
-            
-            val currentHeight = responseScrollView?.height ?: 0
-            currentAnimator = ValueAnimator.ofInt(currentHeight, maxResponseHeight).apply {
-                duration = 250
-                addUpdateListener {
-                    val height = it.animatedValue as Int
-                    val layoutParams = responseScrollView?.layoutParams
-                    layoutParams?.height = height
-                    responseScrollView?.layoutParams = layoutParams
-                }
-                start()
-            }
-        }
-    }
-
-    private fun animateOverlay(imeHeight: Int) {
+    private fun animateOverlayForKeyboard(imeHeight: Int) {
         currentAnimator?.cancel()
         val from = overlayContainer?.translationY ?: 0f
-        val extraLift = (28 * resources.displayMetrics.density).toInt()
+        val extraLift = (20 * resources.displayMetrics.density).toInt()
         val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
         
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
@@ -430,13 +382,55 @@ class AssistOverlayActivity : Activity() {
         }
     }
 
+    private fun applyGradientToTitle() {
+        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
+        
+        // Apply gradient to title text
+        aiResponseTitle?.post {
+            val width = aiResponseTitle?.width?.toFloat() ?: 0f
+            if (width > 0) {
+                val gradient = LinearGradient(
+                    0f, 0f, width, 0f,
+                    Color.parseColor("#e63946"),
+                    Color.parseColor("#4285f4"),
+                    Shader.TileMode.CLAMP
+                )
+                aiResponseTitle?.paint?.shader = gradient
+            }
+        }
+        
+        // Apply gradient to icon (for Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            aiResponseIcon?.post {
+                val width = aiResponseIcon?.width?.toFloat() ?: 0f
+                if (width > 0) {
+                    val gradient = LinearGradient(
+                        0f, 0f, width, 0f,
+                        Color.parseColor("#e63946"),
+                        Color.parseColor("#4285f4"),
+                        Shader.TileMode.CLAMP
+                    )
+                    aiResponseIcon?.setColorFilter(
+                        android.graphics.BlendModeColorFilter(
+                            Color.parseColor("#e63946"),
+                            BlendMode.SRC_IN
+                        )
+                    )
+                }
+            }
+        } else {
+            // Fallback for older devices - use solid color
+            aiResponseIcon?.setColorFilter(Color.parseColor("#e63946"))
+        }
+    }
+
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
         val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
-        val titleColor = if (isDark) Color.parseColor("#6B9AFF") else Color.parseColor("#5080E8")
 
         // Text colors
         inputField?.setTextColor(textColor)
@@ -445,7 +439,6 @@ class AssistOverlayActivity : Activity() {
         miniInputField?.setHintTextColor(hintColor)
         thinkingText?.setTextColor(textColor)
         aiResponseText?.setTextColor(textColor)
-        aiResponseTitle?.setTextColor(titleColor)
 
         // Icon tints
         paperclipButton?.setColorFilter(iconTint)
@@ -463,6 +456,13 @@ class AssistOverlayActivity : Activity() {
         originalInputCard?.background = bg
         thinkingCard?.background = bg
         responseCard?.background = bg
+        
+        // Mini input background
+        val miniBg = ContextCompat.getDrawable(
+            this,
+            if (isDark) R.drawable.mini_input_background_dark else R.drawable.mini_input_background_light
+        )
+        miniInputCard?.background = miniBg
 
         // Gradient borders
         val gradientBorder = ContextCompat.getDrawable(
@@ -471,6 +471,9 @@ class AssistOverlayActivity : Activity() {
         )
         voiceContainer?.background = gradientBorder
         miniVoiceContainer?.background = gradientBorder
+        
+        // Re-apply gradient to title after theme change
+        applyGradientToTitle()
     }
 
     private fun openMainApp(query: String?) {
