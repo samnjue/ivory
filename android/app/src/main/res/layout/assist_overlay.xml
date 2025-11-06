@@ -85,7 +85,7 @@
                         android:id="@+id/miniInputCard"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/mini_input_background"
+                        android:background="@drawable/overlay_background"
                         android:elevation="2dp">
 
                         <LinearLayout
