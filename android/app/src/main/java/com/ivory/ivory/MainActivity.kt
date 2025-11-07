@@ -15,6 +15,10 @@ import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.Arguments
+import android.Manifest
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 
 class MainActivity : ReactActivity() {
     private var isAssistPending: Boolean = false
@@ -148,6 +152,35 @@ class MainActivity : ReactActivity() {
         super.finish()
         if (isAssistMode) {
             overridePendingTransition(0, 0)
+        }
+    }
+
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivityForResult(intent, 1234)
+            } else {
+                IvoryOverlayService.start(this)
+            }
+        } else {
+            IvoryOverlayService.start(this)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1234) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    IvoryOverlayService.start(this)
+                } else {
+                    Toast.makeText(this, "Overlay permission required", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 }

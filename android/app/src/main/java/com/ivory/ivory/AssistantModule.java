@@ -187,4 +187,40 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             Log.e(TAG, "No activity to finish");
         }
     }
+
+    @ReactMethod
+    public void startFloatingOrb(Promise promise) {
+        try {
+            Context ctx = getReactApplicationContext();
+            IvoryOverlayService.start(ctx);              
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("START_ORB_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void stopFloatingOrb(Promise promise) {
+        try {
+            Context ctx = getReactApplicationContext();
+            IvoryOverlayService.stop(ctx);                
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STOP_ORB_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void isFloatingOrbRunning(Promise promise) {
+        android.app.ActivityManager am = (android.app.ActivityManager) 
+            reactContext.getSystemService(Context.ACTIVITY_SERVICE);
+        for (android.app.ActivityManager.RunningServiceInfo rsi : 
+                am.getRunningServices(Integer.MAX_VALUE)) {
+            if (IvoryOverlayService.class.getName().equals(rsi.service.getClassName())) {
+                promise.resolve(true);
+                return;
+            }
+        }
+        promise.resolve(false);
+    }
 }

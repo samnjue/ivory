@@ -1,0 +1,282 @@
+package com.ivory.ivory
+
+import android.app.Service
+import android.content.Intent
+import android.graphics.PixelFormat
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.view.*
+import android.view.animation.*
+import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.core.view.isVisible
+import com.ivory.ivory.R
+import com.ivory.ivory.WaveView
+
+class IvoryOverlayService : Service() {
+
+    companion object {
+        const val ACTION_SHOW = "com.ivory.ivory.SHOW_ORB"
+        const val ACTION_HIDE = "com.ivory.ivory.HIDE_ORB"
+
+        fun start(context: android.content.Context) {
+            val i = Intent(context, IvoryOverlayService::class.java).apply {
+                action = ACTION_SHOW
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(i)
+            } else {
+                context.startService(i)
+            }
+        }
+
+        fun stop(context: android.content.Context) {
+            val i = Intent(context, IvoryOverlayService::class.java).apply {
+                action = ACTION_HIDE
+            }
+            context.startService(i)
+        }
+    }
+
+    private var wm: WindowManager? = null
+    private var orbContainer: ViewGroup? = null
+    private var orb: ImageView? = null
+    private var wave: WaveView? = null
+    private var inputCard: FrameLayout? = null
+    private var removeZone: View? = null
+
+    // drag state
+    private var initialX = 0
+    private var initialY = 0
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+    private var isDragging = false
+
+    // idle shrink
+    private val idleHandler = Handler(Looper.getMainLooper())
+    private val idleRunnable = Runnable { shrinkOrb() }
+
+    // params
+    private lateinit var orbParams: WindowManager.LayoutParams
+    private var screenW = 0
+    private var screenH = 0
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display
+        } else {
+            wm!!.defaultDisplay
+        }
+        val size = android.graphics.Point()
+        display?.getRealSize(size)
+        screenW = size.x
+        screenH = size.y
+
+        createOverlay()
+        startForeground(1, android.app.Notification()) 
+    }
+
+    private fun createOverlay() {
+        // ----- ROOT container (covers whole screen) -----
+        val root = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // ----- REMOVE ZONE (bottom) -----
+        removeZone = View(this).apply {
+            isVisible = false
+            setBackgroundResource(R.drawable.remove_zone_bg) // red strip
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(120)
+            ).apply { gravity = Gravity.BOTTOM }
+            root.addView(this)
+        }
+
+        // ----- ORB (draggable) -----
+        val orbSize = dp(56)
+        orb = ImageView(this).apply {
+            setImageResource(R.drawable.ivorystar)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            elevation = 12f
+            background = getDrawable(R.drawable.orb_bg) //  rounded bg
+        }
+
+        orbParams = WindowManager.LayoutParams(
+            orbSize, orbSize,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = screenW - orbSize - dp(16)
+            y = screenH / 2
+        }
+
+        val orbWrapper = FrameLayout(this).apply {
+            addView(orb, FrameLayout.LayoutParams(orbSize, orbSize))
+            // Wave view sits on top of the star
+            wave = WaveView(this@IvoryOverlayService).apply {
+                isVisible = false
+                addView(this, FrameLayout.LayoutParams(orbSize * 2, orbSize * 2).apply {
+                    gravity = Gravity.CENTER
+                })
+            }
+        }
+
+        // ----- INPUT CARD  -----
+        val inflater = LayoutInflater.from(this)
+        inputCard = inflater.inflate(R.layout.assist_overlay, root, false) as FrameLayout
+        // hide everything except the originalInputCard
+        inputCard?.findViewById<FrameLayout>(R.id.originalInputCard)?.isVisible = true
+        inputCard?.findViewById<FrameLayout>(R.id.responseCard)?.isVisible = false
+        inputCard?.findViewById<FrameLayout>(R.id.thinkingCard)?.isVisible = false
+        inputCard?.isVisible = false
+        root.addView(inputCard)
+
+        // ----- Add everything to WindowManager -----
+        orbContainer = FrameLayout(this).apply { addView(orbWrapper) }
+        wm!!.addView(root, WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            orbParams.type,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ))
+        wm!!.addView(orbContainer, orbParams)
+
+        // ----- Touch handling -----
+        orbWrapper.setOnTouchListener { v, ev ->
+            when (ev.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isDragging = false
+                    initialX = orbParams.x
+                    initialY = orbParams.y
+                    initialTouchX = ev.rawX
+                    initialTouchY = ev.rawY
+                    idleHandler.removeCallbacks(idleRunnable)
+                    expandOrb()
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (ev.rawX - initialTouchX).toInt()
+                    val dy = (ev.rawY - initialTouchY).toInt()
+                    orbParams.x = initialX + dx
+                    orbParams.y = initialY + dy
+                    wm!!.updateViewLayout(orbContainer, orbParams)
+
+                    // show/hide remove zone
+                    val bottomThreshold = screenH - dp(120)
+                    removeZone?.isVisible = orbParams.y > bottomThreshold
+                    isDragging = true
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (isDragging) {
+                        // dropped on remove zone?
+                        if (removeZone?.isVisible == true) {
+                            stopSelf()
+                            return@setOnTouchListener true
+                        }
+                        // snap to edge
+                        snapOrbToEdge()
+                    } else {
+                        // TAP → open UI
+                        onOrbTap()
+                    }
+                    scheduleIdleShrink()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun onOrbTap() {
+        // 1. start wave animation
+        wave?.isVisible = true
+        wave?.startAnimation()
+
+        // 2. animate input card out of the orb
+        inputCard?.isVisible = true
+        inputCard?.alpha = 0f
+        inputCard?.scaleX = 0.3f
+        inputCard?.scaleY = 0.3f
+        inputCard?.translationX = (orbParams.x + dp(28) - screenW / 2).toFloat()
+        inputCard?.translationY = (orbParams.y + dp(28) - dp(80)).toFloat()
+
+        inputCard?.animate()
+            ?.alpha(1f)
+            ?.scaleX(1f)
+            ?.scaleY(1f)
+            ?.translationX(0f)
+            ?.translationY(0f)
+            ?.setDuration(350)
+            ?.setInterpolator(DecelerateInterpolator())
+            ?.withEndAction {
+                // hand over to your existing AssistOverlayActivity logic
+                // (you can keep the same views, just make them visible)
+                // For brevity we just keep the card visible.
+            }?.start()
+    }
+
+    private fun snapOrbToEdge() {
+        val targetX = if (orbParams.x > screenW / 2) screenW - dp(72) else dp(16)
+        val animX = ObjectAnimator.ofInt(orbParams.x, targetX).apply {
+            duration = 250
+            addUpdateListener {
+                orbParams.x = it.animatedValue as Int
+                wm!!.updateViewLayout(orbContainer, orbParams)
+            }
+        }
+        animX.start()
+    }
+
+    private fun expandOrb() {
+        orb?.animate()?.scaleX(1.2f)?.scaleY(1.2f)?.alpha(1f)?.setDuration(200)?.start()
+        wave?.isVisible = false
+        scheduleIdleShrink()
+    }
+
+    private fun shrinkOrb() {
+        orb?.animate()?.scaleX(0.8f)?.scaleY(0.8f)?.alpha(0.6f)?.setDuration(300)?.start()
+    }
+
+    private fun scheduleIdleShrink() {
+        idleHandler.removeCallbacks(idleRunnable)
+        idleHandler.postDelayed(idleRunnable, 3000)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_SHOW -> {
+                // already created in onCreate()
+            }
+            ACTION_HIDE -> stopSelf()
+        }
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        idleHandler.removeCallbacksAndMessages(null)
+        wm?.let {
+            orbContainer?.let { v -> it.removeView(v) }
+            // root view is removed automatically when service stops
+        }
+        super.onDestroy()
+    }
+
+    private fun dp(dp: Int) = (resources.displayMetrics.density * dp).toInt()
+}

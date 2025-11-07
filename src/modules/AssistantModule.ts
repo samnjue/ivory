@@ -1,4 +1,9 @@
-import { NativeModules, NativeEventEmitter, Platform, Alert } from "react-native";
+import {
+	NativeModules,
+	NativeEventEmitter,
+	Platform,
+	Alert,
+} from "react-native";
 
 console.log("Available Native Modules:", NativeModules);
 console.log("AssistantModule:", NativeModules.AssistantModule);
@@ -115,6 +120,31 @@ class AssistantAPI {
 		if (Platform.OS === "android" && AssistantModule) {
 			AssistantModule.finishActivity();
 		}
+	}
+
+	async startFloatingOrb(): Promise<boolean> {
+		if (Platform.OS !== "android" || !AssistantModule) return false;
+		try {
+			return await AssistantModule.startFloatingOrb();
+		} catch (e) {
+			console.error("Failed to start orb:", e);
+			return false;
+		}
+	}
+
+	async stopFloatingOrb(): Promise<boolean> {
+		if (Platform.OS !== "android" || !AssistantModule) return false;
+		try {
+			return await AssistantModule.stopFloatingOrb();
+		} catch (e) {
+			console.error("Failed to stop orb:", e);
+			return false;
+		}
+	}
+
+	async isFloatingOrbRunning(): Promise<boolean> {
+		if (Platform.OS !== "android" || !AssistantModule) return false;
+		return await AssistantModule.isFloatingOrbRunning();
 	}
 }
 

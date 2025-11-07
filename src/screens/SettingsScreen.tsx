@@ -17,6 +17,7 @@ import { COLORS } from "../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../utils/supabase";
 import AssistantModule from "../modules/AssistantModule";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen({ navigation }: any) {
   const colorScheme = useColorScheme();
@@ -27,6 +28,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   const [isDefaultAssistant, setIsDefaultAssistant] = useState(false);
   const [hasOverlayPerm, setHasOverlayPerm] = useState(false);
+  const [isFloatingOrbEnabled, setIsFloatingOrbEnabled] = useState(false);
 
   const backgroundActive = isDark ? "#FFFFFF" : "#000000";
   const backgroundInactive = isDark ? "#6e6e6eff" : "#b6b6b6ff";
@@ -58,6 +60,28 @@ export default function SettingsScreen({ navigation }: any) {
       console.error("Error checking permissions:", error);
     }
   };
+
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  // Add this inside the same file (or separate function)
+  const checkFloatingOrbStatus = async () => {
+    try {
+      const running = await AssistantModule.isFloatingOrbRunning?.() ?? false;
+      setIsFloatingOrbEnabled(running);
+    } catch {
+      setIsFloatingOrbEnabled(false);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      checkPermissions();
+      checkFloatingOrbStatus();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleToggleAssistant = async () => {
     try {
@@ -125,6 +149,54 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert("Error", "Failed to open overlay settings. Please try again.");
     }
   };
+
+  const handleToggleFloatingOrb = async () => {
+    if (!hasOverlayPerm) {
+      Alert.alert(
+        "Overlay Permission Required",
+        "Please enable 'Display over other apps' first.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    const willBeEnabled = !isFloatingOrbEnabled;
+
+    try {
+      const success = willBeEnabled
+        ? await AssistantModule.startFloatingOrb()
+        : await AssistantModule.stopFloatingOrb();
+
+      if (success) {
+        setIsFloatingOrbEnabled(willBeEnabled);
+        await AsyncStorage.setItem("floating_orb_enabled", `${willBeEnabled}`);
+      } else if (willBeEnabled) {
+        Alert.alert("Failed", "Could not start floating assistant.");
+      }
+    } catch (error) {
+      console.error("Orb toggle error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    const loadSavedState = async () => {
+      try {
+        const saved = await AsyncStorage.getItem("floating_orb_enabled");
+        if (saved !== null) {
+          const enabled = saved === "true";
+          setIsFloatingOrbEnabled(enabled);
+          if (enabled && hasOverlayPerm) {
+            AssistantModule.startFloatingOrb().catch(() => { });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load orb state", e);
+      }
+    };
+
+    loadSavedState();
+  }, [hasOverlayPerm]);
 
   return (
     <View
@@ -281,10 +353,8 @@ export default function SettingsScreen({ navigation }: any) {
             </Text>
           </View>
           <SwitchToggle
-            switchOn={false}
-            onPress={() => {
-              Alert.alert("Coming Soon", "Floating button feature is coming soon!");
-            }}
+            switchOn={isFloatingOrbEnabled}
+            onPress={handleToggleFloatingOrb}
             backgroundColorOn={backgroundActive}
             backgroundColorOff={backgroundInactive}
             circleColorOn={circleColor}
