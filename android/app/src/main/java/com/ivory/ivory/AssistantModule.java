@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 import androidx.annotation.NonNull;
@@ -192,7 +194,8 @@ public class AssistantModule extends ReactContextBaseJavaModule {
     public void startFloatingOrb(Promise promise) {
         try {
             Log.d(TAG, "startFloatingOrb called");
-
+            
+            // Check overlay permission first
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (!Settings.canDrawOverlays(reactContext)) {
                     Log.e(TAG, "Overlay permission not granted!");
@@ -204,10 +207,14 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             Context ctx = getReactApplicationContext();
             Log.d(TAG, "Starting IvoryOverlayService...");
             IvoryOverlayService.start(ctx);
-
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                boolean running = isServiceRunning();
-                Log.d(TAG, "Service running after start: " + running);
+            
+            // Wait a bit and check if service started
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    boolean running = isServiceRunning();
+                    Log.d(TAG, "Service running after start: " + running);
+                }
             }, 500);
             
             promise.resolve(true);
@@ -217,6 +224,41 @@ public class AssistantModule extends ReactContextBaseJavaModule {
         }
     }
 
+    @ReactMethod
+    public void stopFloatingOrb(Promise promise) {
+        try {
+            Log.d(TAG, "stopFloatingOrb called");
+            Context ctx = getReactApplicationContext();
+            IvoryOverlayService.stop(ctx);
+            
+            // Wait a bit and check if service stopped
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    boolean running = isServiceRunning();
+                    Log.d(TAG, "Service running after stop: " + running);
+                }
+            }, 500);
+            
+            promise.resolve(true);
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping orb: " + e.getMessage(), e);
+            promise.reject("STOP_ORB_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void isFloatingOrbRunning(Promise promise) {
+        try {
+            boolean running = isServiceRunning();
+            Log.d(TAG, "isFloatingOrbRunning: " + running);
+            promise.resolve(running);
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking orb status: " + e.getMessage(), e);
+            promise.resolve(false);
+        }
+    }
+    
     private boolean isServiceRunning() {
         android.app.ActivityManager am = (android.app.ActivityManager) 
             reactContext.getSystemService(Context.ACTIVITY_SERVICE);
@@ -229,19 +271,5 @@ public class AssistantModule extends ReactContextBaseJavaModule {
             }
         }
         return false;
-    }
-
-    @ReactMethod
-    public void isFloatingOrbRunning(Promise promise) {
-        android.app.ActivityManager am = (android.app.ActivityManager) 
-            reactContext.getSystemService(Context.ACTIVITY_SERVICE);
-        for (android.app.ActivityManager.RunningServiceInfo rsi : 
-                am.getRunningServices(Integer.MAX_VALUE)) {
-            if (IvoryOverlayService.class.getName().equals(rsi.service.getClassName())) {
-                promise.resolve(true);
-                return;
-            }
-        }
-        promise.resolve(false);
     }
 }
