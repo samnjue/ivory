@@ -49,9 +49,9 @@ class IvoryOverlayService : Service() {
 
     // Views & Containers
     private var wm: WindowManager? = null
-    private var container: FrameLayout? = null  
+    private var container: FrameLayout? = null
     private var orbWrapper: FrameLayout? = null
-    private var orb: ImageView? = null
+    private var orbView: OrbView? = null
     private var wave: WaveView? = null
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
@@ -88,9 +88,6 @@ class IvoryOverlayService : Service() {
     private var miniMicContainer: View? = null
     private var miniMicIcon: ImageView? = null
     private var miniVoiceContainer: View? = null
-
-    // Containers
-    private var overlayContainer: View? = null
 
     // State
     private var isListening = false
@@ -138,7 +135,6 @@ class IvoryOverlayService : Service() {
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
-
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("Ivory Assistant")
                 .setContentText("Floating button is active")
@@ -146,7 +142,6 @@ class IvoryOverlayService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
                 .build()
-
             startForeground(1, notification)
         }
 
@@ -197,28 +192,25 @@ class IvoryOverlayService : Service() {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
             clipToOutline = true
             elevation = 12f
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setOval(0, 0, orbSize, orbSize)
+                }
+            }
         }
 
+        // Wave
         wave = WaveView(this).apply {
             isVisible = false
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
         }
         orbWrapper!!.addView(wave)
 
-        val border = FrameLayout(this).apply {
+        // Custom Orb with translucent black fill
+        orbView = OrbView(this).apply {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
-            background = ContextCompat.getDrawable(this@IvoryOverlayService, R.drawable.gradient_border_light)
-            clipToOutline = true
         }
-        orbWrapper!!.addView(border)
-
-        val star = ImageView(this).apply {
-            setImageResource(R.drawable.ivorystar)
-            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply { gravity = Gravity.CENTER }
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }
-        orbWrapper!!.addView(star)
-        orb = star
+        orbWrapper!!.addView(orbView)
 
         container!!.addView(orbWrapper)
 
@@ -229,9 +221,7 @@ class IvoryOverlayService : Service() {
         inputCard?.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            gravity = Gravity.START or Gravity.TOP
-        }
+        )
         container!!.addView(inputCard)
 
         // Bind views
@@ -244,7 +234,6 @@ class IvoryOverlayService : Service() {
         aiResponseText = inputCard?.findViewById(R.id.aiResponseText)
         aiResponseTitle = inputCard?.findViewById(R.id.aiResponseTitle)
         aiResponseIcon = inputCard?.findViewById(R.id.aiResponseIcon)
-
         inputField = inputCard?.findViewById(R.id.inputField)
         sendButton = inputCard?.findViewById(R.id.sendButton)
         miniInputField = inputCard?.findViewById(R.id.miniInputField)
@@ -252,13 +241,11 @@ class IvoryOverlayService : Service() {
         overlayContainer = inputCard?.findViewById(R.id.overlayContainer)
         miniInputContainer = inputCard?.findViewById(R.id.miniInputContainer)
         miniInputCard = inputCard?.findViewById(R.id.miniInputCard)
-
         paperclipButton = inputCard?.findViewById(R.id.paperclipButton)
         micContainer = inputCard?.findViewById(R.id.micContainer)
         micIcon = inputCard?.findViewById(R.id.micIcon)
         micBlurLayer = inputCard?.findViewById(R.id.micBlurLayer)
         voiceContainer = inputCard?.findViewById(R.id.voiceContainer)
-
         miniPaperclipButton = inputCard?.findViewById(R.id.miniPaperclipButton)
         miniMicContainer = inputCard?.findViewById(R.id.miniMicContainer)
         miniMicIcon = inputCard?.findViewById(R.id.miniMicIcon)
@@ -291,7 +278,6 @@ class IvoryOverlayService : Service() {
                     orbParams.x = initialX + dx
                     orbParams.y = initialY + dy
                     wm!!.updateViewLayout(container, orbParams)
-
                     val bottomThreshold = screenH - dp(120)
                     removeZone?.isVisible = orbParams.y > bottomThreshold
                     isDragging = true
@@ -326,10 +312,9 @@ class IvoryOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenW - orbSize - dp(16)
+            x = screenW - orbSize - dp(8)  // Full snap to edge
             y = screenH / 2
         }
-
         wm!!.addView(container, orbParams)
 
         // Remove zone
@@ -352,6 +337,86 @@ class IvoryOverlayService : Service() {
         wm!!.addView(removeZone, removeParams)
     }
 
+    // Custom Orb with black translucent fill
+    inner class OrbView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#66000000") // 40% black
+        }
+        private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val cx = width / 2f
+            val cy = height / 2f
+            val radius = orbSize / 2f
+            canvas.drawCircle(cx, cy, radius, paint)
+
+            val starDrawable = ContextCompat.getDrawable(context, R.drawable.ivorystar)
+            starDrawable?.setBounds(
+                (cx - dp(16)).toInt(),
+                (cy - dp(16)).toInt(),
+                (cx + dp(16)).toInt(),
+                (cy + dp(16)).toInt()
+            )
+            starDrawable?.draw(canvas)
+        }
+    }
+
+    // Wave View with rise/drop animation
+    inner class WaveView(context: Context) : View(context) {
+        private var waveOffset = 0f
+        private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#33FFFFFF")
+            style = Paint.Style.FILL
+        }
+
+        fun startAnimation() {
+            isVisible = true
+            waveOffset = 0f
+            animateWaveRise()
+        }
+
+        private fun animateWaveRise() {
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 400
+                interpolator = DecelerateInterpolator()
+                addUpdateListener {
+                    waveOffset = it.animatedFraction
+                    invalidate()
+                }
+                start()
+            }
+        }
+
+        fun drop() {
+            ValueAnimator.ofFloat(waveOffset, 0f).apply {
+                duration = 300
+                addUpdateListener {
+                    waveOffset = it.animatedFraction
+                    invalidate()
+                    if (it.animatedFraction == 0f) isVisible = false
+                }
+                start()
+            }
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val centerY = height / 2f
+            val amplitude = orbSize * 0.6f * waveOffset
+            val path = Path()
+            path.moveTo(0f, centerY)
+            for (x in 0..width step 4) {
+                val y = centerY + amplitude * Math.sin(x * 0.05 + waveOffset * 10).toFloat()
+                path.lineTo(x.toFloat(), y)
+            }
+            path.lineTo(width.toFloat(), height.toFloat())
+            path.lineTo(0f, height.toFloat())
+            path.close()
+            canvas.drawPath(path, wavePaint)
+        }
+    }
+
     // UI Setup
     private fun setupOverlayUi() {
         inputCard?.findViewById<View>(R.id.rootOverlay)?.setOnClickListener { hideInputCard() }
@@ -361,6 +426,7 @@ class IvoryOverlayService : Service() {
 
         paperclipButton?.setOnClickListener { Log.d("Overlay", "Paperclip tapped") }
         voiceContainer?.setOnClickListener { openMainApp(null); hideInputCard() }
+
         micContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation()
@@ -372,10 +438,13 @@ class IvoryOverlayService : Service() {
 
         inputField?.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
+                inputField?.postDelayed({
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
+                }, 100)
             }
         }
+
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -389,12 +458,16 @@ class IvoryOverlayService : Service() {
 
         miniVoiceContainer?.setOnClickListener { openMainApp(null); hideInputCard() }
         miniMicContainer?.setOnClickListener { Log.d("Overlay", "Mini mic tapped") }
+
         miniInputField?.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(miniInputField, InputMethodManager.SHOW_IMPLICIT)
+                miniInputField?.postDelayed({
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showSoftInput(miniInputField, InputMethodManager.SHOW_IMPLICIT)
+                }, 100)
             }
         }
+
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -516,9 +589,7 @@ class IvoryOverlayService : Service() {
 
     // Orb Actions
     private fun onOrbTap() {
-        wave?.isVisible = true
         wave?.startAnimation()
-
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.8f
@@ -539,19 +610,20 @@ class IvoryOverlayService : Service() {
         val clampedX = targetX.coerceIn(0, screenW - cardWidth)
         val clampedY = targetY.coerceIn(0, screenH - dp(300))
 
+        inputCard?.translationX = clampedX.toFloat()
+        inputCard?.translationY = clampedY.toFloat()
+
         inputCard?.animate()
             ?.alpha(1f)
             ?.scaleX(1f)
             ?.scaleY(1f)
+            ?.translationX(0f)
+            ?.translationY(0f)
             ?.setDuration(350)
             ?.setInterpolator(DecelerateInterpolator())
             ?.withEndAction {
                 originalInputCard?.visibility = View.VISIBLE
-                (inputCard?.layoutParams as FrameLayout.LayoutParams).apply {
-                    leftMargin = clampedX
-                    topMargin = clampedY
-                }
-                container?.requestLayout()
+                inputField?.requestFocus()
             }?.start()
 
         applyTheme()
@@ -571,20 +643,11 @@ class IvoryOverlayService : Service() {
 
     private fun snapOrbToEdge() {
         val centerX = orbParams.x + orbSize / 2f
-        val centerY = orbParams.y + orbSize / 2f
+        val topEdge = 0
+        val bottomEdge = screenH - orbSize
 
-        val leftEdge = dp(16)
-        val rightEdge = screenW - orbSize - dp(16)
-        val topEdge = dp(16)
-        val bottomEdge = screenH - orbSize - dp(16)
-
-        val targetX = when {
-            centerX < screenW * 0.3f -> leftEdge
-            centerX > screenW * 0.7f -> rightEdge
-            else -> if (centerX < screenW / 2) leftEdge else rightEdge
-        }
-
-        val targetY = centerY.coerceIn(topEdge.toFloat(), bottomEdge.toFloat()).toInt()
+        val targetX = if (centerX < screenW / 2) 0 else screenW - orbSize
+        val targetY = orbParams.y.coerceIn(topEdge, bottomEdge)
 
         val xHolder = PropertyValuesHolder.ofInt("x", orbParams.x, targetX)
         val yHolder = PropertyValuesHolder.ofInt("y", orbParams.y, targetY)
@@ -607,7 +670,6 @@ class IvoryOverlayService : Service() {
             ?.scaleY(1.2f)
             ?.setDuration(200)
             ?.start()
-        wave?.isVisible = false
         scheduleIdleShrink()
     }
 
@@ -615,9 +677,11 @@ class IvoryOverlayService : Service() {
         orbWrapper?.animate()
             ?.scaleX(0.8f)
             ?.scaleY(0.8f)
-            ?.alpha(0.6f)
+            ?.alpha(1f) // No dimming
             ?.setDuration(300)
-            ?.start()
+            ?.withEndAction {
+                wave?.drop()
+            }?.start()
     }
 
     private fun scheduleIdleShrink() {
@@ -631,7 +695,16 @@ class IvoryOverlayService : Service() {
         if (text.isEmpty()) return
         editText.text.clear()
         hideKeyboard()
-        startThinkingPhase()
+
+        // Animate out input card
+        originalInputCard?.animate()
+            ?.alpha(0f)
+            ?.scaleX(0.9f)
+            ?.scaleY(0.9f)
+            ?.setDuration(200)
+            ?.withEndAction {
+                startThinkingPhase()
+            }?.start()
     }
 
     private fun hideKeyboard() {
@@ -726,7 +799,6 @@ class IvoryOverlayService : Service() {
         uiHandler.removeCallbacksAndMessages(null)
         currentAnimator?.cancel()
         thinkingIvoryStar?.clearAnimation()
-
         wm?.let {
             container?.let { v -> it.removeView(v) }
             removeZone?.let { v -> it.removeView(v) }
