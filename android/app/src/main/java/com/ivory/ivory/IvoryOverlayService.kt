@@ -57,6 +57,9 @@ class IvoryOverlayService : Service() {
     private var removeZone: View? = null
     private var orbSize = 0
 
+    // Root overlay for IME insets
+    private var rootOverlay: View? = null
+
     // Cards
     private var originalInputCard: FrameLayout? = null
     private var thinkingCard: FrameLayout? = null
@@ -224,7 +227,9 @@ class IvoryOverlayService : Service() {
         )
         container!!.addView(inputCard)
 
-        // Bind views
+        // === BIND VIEWS (Critical Order) ===
+        rootOverlay = inputCard?.findViewById(R.id.rootOverlay)
+
         originalInputCard = inputCard?.findViewById(R.id.originalInputCard)
         thinkingCard = inputCard?.findViewById(R.id.thinkingCard)
         responseCard = inputCard?.findViewById(R.id.responseCard)
@@ -238,7 +243,6 @@ class IvoryOverlayService : Service() {
         sendButton = inputCard?.findViewById(R.id.sendButton)
         miniInputField = inputCard?.findViewById(R.id.miniInputField)
         miniSendButton = inputCard?.findViewById(R.id.miniSendButton)
-        overlayContainer = inputCard?.findViewById(R.id.overlayContainer)
         miniInputContainer = inputCard?.findViewById(R.id.miniInputContainer)
         miniInputCard = inputCard?.findViewById(R.id.miniInputCard)
         paperclipButton = inputCard?.findViewById(R.id.paperclipButton)
@@ -251,6 +255,7 @@ class IvoryOverlayService : Service() {
         miniMicIcon = inputCard?.findViewById(R.id.miniMicIcon)
         miniVoiceContainer = inputCard?.findViewById(R.id.miniVoiceContainer)
 
+        // === NOW SAFE TO CALL ===
         setupOverlayUi()
         setupImeInsetListener()
         applyTheme()
@@ -312,7 +317,7 @@ class IvoryOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenW - orbSize - dp(8)  // Full snap to edge
+            x = screenW - orbSize - dp(8)
             y = screenH / 2
         }
         wm!!.addView(container, orbParams)
@@ -341,9 +346,6 @@ class IvoryOverlayService : Service() {
     inner class OrbView(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#66000000") // 40% black
-        }
-        private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -419,7 +421,7 @@ class IvoryOverlayService : Service() {
 
     // UI Setup
     private fun setupOverlayUi() {
-        inputCard?.findViewById<View>(R.id.rootOverlay)?.setOnClickListener { hideInputCard() }
+        rootOverlay?.setOnClickListener { hideInputCard() }
         originalInputCard?.setOnClickListener { }
         responseCard?.setOnClickListener { }
         miniInputCard?.setOnClickListener { }
@@ -481,9 +483,9 @@ class IvoryOverlayService : Service() {
 
     // Keyboard Handling
     private fun setupImeInsetListener() {
-        inputCard?.findViewById<View>(R.id.rootOverlay)?.setOnApplyWindowInsetsListener { _, insets ->
+        rootOverlay?.setOnApplyWindowInsetsListener { _, insets ->
             val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
-            if (imeHeight != lastImeHeight) {
+            if (imeHeight ≠ lastImeHeight) {
                 lastImeHeight = imeHeight
                 animateOverlayForKeyboard(imeHeight)
             }
@@ -647,7 +649,7 @@ class IvoryOverlayService : Service() {
         val bottomEdge = screenH - orbSize
 
         val targetX = if (centerX < screenW / 2) 0 else screenW - orbSize
-        val targetY = orbParams.y.coerceIn(topEdge, bottomEdge)
+        val targetY = = orbParams.y.coerceIn(topEdge, bottomEdge)
 
         val xHolder = PropertyValuesHolder.ofInt("x", orbParams.x, targetX)
         val yHolder = PropertyValuesHolder.ofInt("y", orbParams.y, targetY)
@@ -677,7 +679,7 @@ class IvoryOverlayService : Service() {
         orbWrapper?.animate()
             ?.scaleX(0.8f)
             ?.scaleY(0.8f)
-            ?.alpha(1f) // No dimming
+            ?.alpha(1f)
             ?.setDuration(300)
             ?.withEndAction {
                 wave?.drop()
@@ -696,7 +698,6 @@ class IvoryOverlayService : Service() {
         editText.text.clear()
         hideKeyboard()
 
-        // Animate out input card
         originalInputCard?.animate()
             ?.alpha(0f)
             ?.scaleX(0.9f)
