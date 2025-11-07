@@ -48,7 +48,8 @@ class IvoryOverlayService : Service() {
 
     // Views
     private var wm: WindowManager? = null
-    private var container: FrameLayout? = null
+    private var orbContainer: FrameLayout? = null
+    private var cardContainer: FrameLayout? = null
     private var orbWrapper: FrameLayout? = null
     private var gradientBorder: GradientBorderView? = null
     private var blackFill: View? = null
@@ -56,7 +57,7 @@ class IvoryOverlayService : Service() {
     private var starIcon: ImageView? = null
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
-        private var orbSize = 0
+    private var orbSize = 0
 
     // Cards & UI
     private var rootOverlay: View? = null
@@ -85,6 +86,11 @@ class IvoryOverlayService : Service() {
     private var miniMicIcon: ImageView? = null
     private var miniVoiceContainer: View? = null
 
+    // Close buttons
+    private var originalCloseButton: ImageView? = null
+    private var thinkingCloseButton: ImageView? = null
+    private var responseCloseButton: ImageView? = null
+
     // State
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
@@ -111,6 +117,7 @@ class IvoryOverlayService : Service() {
 
     // Window
     private lateinit var orbParams: WindowManager.LayoutParams
+    private lateinit var cardParams: WindowManager.LayoutParams
     private var screenW = 0; private var screenH = 0
 
     // Lifecycle
@@ -166,42 +173,63 @@ class IvoryOverlayService : Service() {
     }
 
     private fun createOverlay() {
-        container = FrameLayout(this).apply {
+        // Separate containers for orb and cards
+        orbContainer = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
 
+        cardContainer = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            isVisible = false
+            setOnClickListener { hideInputCard() }
+        }
+
         // Orb
         orbSize = dp(56)
         orbWrapper = FrameLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
-            clipToOutline = true
-            clipChildren = true
+            layoutParams = FrameLayout.LayoutParams(orbSize * 2, orbSize * 2).apply {
+                gravity = Gravity.CENTER
+            }
+            // Remove clipToOutline and clipChildren to prevent clipping during scale
+            clipToOutline = false
+            clipChildren = false
+        }
+
+        // Create a circular background for the orb
+        val orbBackground = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply {
+                gravity = Gravity.CENTER
+            }
+            // Use solid color matching your desired background
+            setBackgroundColor(Color.parseColor("#484b5a"))
             elevation = 12f
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(v: View, o: Outline) = o.setOval(0, 0, orbSize, orbSize)
             }
+            clipToOutline = true
         }
+        orbWrapper!!.addView(orbBackground)
 
         // Gradient border
         gradientBorder = GradientBorderView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply {
+                gravity = Gravity.CENTER
+            }
         }
         orbWrapper!!.addView(gradientBorder)
-
-        // Black fill
-        blackFill = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
-            setBackgroundColor(Color.parseColor("#66000000"))
-        }
-        orbWrapper!!.addView(blackFill)
 
         // Wave
         wave = WaveView(this).apply {
             isVisible = false
-            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply {
+                gravity = Gravity.CENTER
+            }
         }
         orbWrapper!!.addView(wave)
 
@@ -214,13 +242,13 @@ class IvoryOverlayService : Service() {
         }
         orbWrapper!!.addView(starIcon)
 
-        container!!.addView(orbWrapper)
+        orbContainer!!.addView(orbWrapper)
 
         // Input card
         val inflater = LayoutInflater.from(this)
-        inputCard = inflater.inflate(R.layout.assist_overlay, container, false) as FrameLayout
+        inputCard = inflater.inflate(R.layout.assist_overlay, cardContainer, false) as FrameLayout
         inputCard?.isVisible = false
-        container!!.addView(inputCard)
+        cardContainer!!.addView(inputCard)
 
         // Bind views
         rootOverlay = inputCard?.findViewById(R.id.rootOverlay)
@@ -247,6 +275,9 @@ class IvoryOverlayService : Service() {
         miniMicIcon = inputCard?.findViewById(R.id.miniMicIcon)
         miniVoiceContainer = inputCard?.findViewById(R.id.miniVoiceContainer)
 
+        // Add close buttons to each card
+        addCloseButtons()
+
         // Setup
         setupOverlayUi()
         setupImeInsetListener()
@@ -270,7 +301,7 @@ class IvoryOverlayService : Service() {
                     val dx = (ev.rawX - initialTouchX).toInt()
                     val dy = (ev.rawY - initialTouchY).toInt()
                     orbParams.x = initialX + dx; orbParams.y = initialY + dy
-                    wm!!.updateViewLayout(container, orbParams)
+                    wm!!.updateViewLayout(orbContainer, orbParams)
                     val bottom = screenH - dp(120)
                     removeZone?.isVisible = orbParams.y > bottom
                     isDragging = true
@@ -290,13 +321,15 @@ class IvoryOverlayService : Service() {
             }
         }
 
-        // Window params
+        // Window params for orb
+        val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else WindowManager.LayoutParams.TYPE_PHONE
+
         orbParams = WindowManager.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else WindowManager.LayoutParams.TYPE_PHONE,
+            windowType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
@@ -305,7 +338,22 @@ class IvoryOverlayService : Service() {
             x = screenW - orbSize - dp(8)
             y = screenH / 2
         }
-        wm!!.addView(container, orbParams)
+        wm!!.addView(orbContainer, orbParams)
+
+        // Window params for card container (full screen)
+        cardParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            windowType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+        wm!!.addView(cardContainer, cardParams)
 
         // Remove zone
         removeZone = View(this).apply {
@@ -318,13 +366,64 @@ class IvoryOverlayService : Service() {
         val rp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             dp(120),
-            orbParams.type,
+            windowType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.BOTTOM }
         wm!!.addView(removeZone, rp)
+    }
+
+    private fun addCloseButtons() {
+        // Close button for original input card
+        originalCloseButton = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
+                gravity = Gravity.TOP or Gravity.END
+                setMargins(0, dp(8), dp(8), 0)
+            }
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            setColorFilter(Color.parseColor("#666666"))
+            background = createCircleBackground(Color.parseColor("#22000000"))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setOnClickListener { hideInputCard() }
+        }
+        originalInputCard?.addView(originalCloseButton)
+
+        // Close button for thinking card
+        thinkingCloseButton = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
+                gravity = Gravity.TOP or Gravity.END
+                setMargins(0, dp(8), dp(8), 0)
+            }
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            setColorFilter(Color.parseColor("#666666"))
+            background = createCircleBackground(Color.parseColor("#22000000"))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setOnClickListener { hideInputCard() }
+        }
+        thinkingCard?.addView(thinkingCloseButton)
+
+        // Close button for response card
+        responseCloseButton = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
+                gravity = Gravity.TOP or Gravity.END
+                setMargins(0, dp(8), dp(8), 0)
+            }
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            setColorFilter(Color.parseColor("#666666"))
+            background = createCircleBackground(Color.parseColor("#22000000"))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setOnClickListener { hideInputCard() }
+        }
+        responseCard?.addView(responseCloseButton)
+    }
+
+    private fun createCircleBackground(color: Int): android.graphics.drawable.Drawable {
+        return android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.OVAL
+            setColor(color)
+        }
     }
 
     // Gradient Border
@@ -467,17 +566,8 @@ class IvoryOverlayService : Service() {
     }
 
     private fun animateOverlayForKeyboard(h: Int) {
-        currentAnimator?.cancel()
-        val lift = if (h > 0) -(h + dp(20)) else 0
-        currentAnimator = ValueAnimator.ofInt(0, lift).apply {
-            duration = 250
-            addUpdateListener {
-                val dy = it.animatedValue as Int
-                orbParams.y = (orbParams.y + dy).coerceIn(0, screenH - orbSize)
-                wm!!.updateViewLayout(container, orbParams)
-            }
-            start()
-        }
+        // Handle keyboard appearance - adjust card position if needed
+        // For now, the card container is full screen so it should work
     }
 
     // Theme
@@ -549,23 +639,13 @@ class IvoryOverlayService : Service() {
     // Orb Tap
     private fun onOrbTap() {
         wave?.startAnimation()
+        cardContainer?.isVisible = true
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.8f; inputCard?.scaleY = 0.8f
 
-        val right = orbParams.x > screenW / 2
-        val cardW = dp(320); val sp = dp(12); val offY = dp(60)
-        val tx = if (right) orbParams.x - cardW - sp else orbParams.x + orbSize + sp
-        val ty = orbParams.y + orbSize / 2 - offY
-        val cx = tx.coerceIn(0, screenW - cardW)
-        val cy = ty.coerceIn(0, screenH - dp(300))
-
-        inputCard?.translationX = cx.toFloat()
-        inputCard?.translationY = cy.toFloat()
-
         inputCard?.animate()
             ?.alpha(1f)?.scaleX(1f)?.scaleY(1f)
-            ?.translationX(0f)?.translationY(0f)
             ?.setDuration(350)?.setInterpolator(DecelerateInterpolator())
             ?.withEndAction {
                 originalInputCard?.visibility = View.VISIBLE
@@ -574,10 +654,15 @@ class IvoryOverlayService : Service() {
     }
 
     private fun hideInputCard() {
+        hideKeyboard()
         inputCard?.animate()
             ?.alpha(0f)?.scaleX(0.8f)?.scaleY(0.8f)
             ?.setDuration(300)
-            ?.withEndAction { inputCard?.isVisible = false; scheduleIdleShrink() }
+            ?.withEndAction {
+                inputCard?.isVisible = false
+                cardContainer?.isVisible = false
+                scheduleIdleShrink()
+            }
             ?.start()
     }
 
@@ -613,7 +698,7 @@ class IvoryOverlayService : Service() {
             addUpdateListener {
                 orbParams.x = it.getAnimatedValue("x") as Int
                 orbParams.y = it.getAnimatedValue("y") as Int
-                wm!!.updateViewLayout(container, orbParams)
+                wm!!.updateViewLayout(orbContainer, orbParams)
             }
             start()
         }
@@ -708,7 +793,11 @@ class IvoryOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_SHOW -> { container?.visibility = View.VISIBLE; removeZone?.visibility = View.GONE }
+            ACTION_SHOW -> { 
+                orbContainer?.visibility = View.VISIBLE
+                cardContainer?.visibility = View.GONE
+                removeZone?.visibility = View.GONE
+            }
             ACTION_HIDE -> stopSelf()
         }
         return START_STICKY
@@ -721,7 +810,8 @@ class IvoryOverlayService : Service() {
         currentAnimator?.cancel()
         thinkingIvoryStar?.clearAnimation()
         wm?.let {
-            container?.let { v -> it.removeView(v) }
+            orbContainer?.let { v -> it.removeView(v) }
+            cardContainer?.let { v -> it.removeView(v) }
             removeZone?.let { v -> it.removeView(v) }
         }
         super.onDestroy()
