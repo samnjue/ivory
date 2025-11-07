@@ -1,20 +1,22 @@
 package com.ivory.ivory
 
-import android.app.Service
-import android.content.Intent
-import android.graphics.PixelFormat
+import android.animation.ValueAnimator
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
-import android.view.animation.DecelerateInterpolator
-import androidx.core.content.ContextCompat
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.graphics.*
+import android.graphics.drawable.Drawable
+import android.os.*
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.*
 import android.view.animation.*
-import android.widget.FrameLayout
-import android.widget.ImageView
+import android.view.inputmethod.InputMethodManager
+import android.widget.*
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.ivory.ivory.R
 import com.ivory.ivory.WaveView
@@ -26,10 +28,8 @@ class IvoryOverlayService : Service() {
         const val ACTION_HIDE = "com.ivory.ivory.HIDE_ORB"
 
         @JvmStatic
-        fun start(context: android.content.Context) {
-            val i = Intent(context, IvoryOverlayService::class.java).apply {
-                action = ACTION_SHOW
-            }
+        fun start(context: Context) {
+            val i = Intent(context, IvoryOverlayService::class.java).apply { action = ACTION_SHOW }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(i)
             } else {
@@ -38,22 +38,24 @@ class IvoryOverlayService : Service() {
         }
 
         @JvmStatic
-        fun stop(context: android.content.Context) {
-            val i = Intent(context, IvoryOverlayService::class.java).apply {
-                action = ACTION_HIDE
-            }
+        fun stop(context: Context) {
+            val i = Intent(context, IvoryOverlayService::class.java).apply { action = ACTION_HIDE }
             context.startService(i)
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Views & state
+    // ------------------------------------------------------------------------
     private var wm: WindowManager? = null
     private var orb: ImageView? = null
     private var wave: WaveView? = null
     private var orbSize = 0
-    private var orbWrapper: FrameLayout? = null  
+    private var orbWrapper: FrameLayout? = null
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
 
+    // cards
     private var originalInputCard: FrameLayout? = null
     private var thinkingCard: FrameLayout? = null
     private var responseCard: FrameLayout? = null
@@ -61,45 +63,49 @@ class IvoryOverlayService : Service() {
     private var thinkingIvoryStar: ImageView? = null
     private var thinkingText: TextView? = null
     private var aiResponseText: TextView? = null
+    private var aiResponseTitle: TextView? = null
+    private var aiResponseIcon: ImageView? = null
+
+    // input fields
     private var inputField: EditText? = null
     private var sendButton: ImageButton? = null
     private var miniInputField: EditText? = null
     private var miniSendButton: ImageButton? = null
 
-    private val uiHandler = Handler(Looper.getMainLooper())
-    private var thinkingDotsRunnable: Runnable? = null
-
-    private var overlayContainer: View? = null
-    private var miniInputContainer: FrameLayout? = null
-    private var miniInputCard: FrameLayout? = null
-
-    // Original input
+    // original-input UI
     private var paperclipButton: ImageButton? = null
     private var micContainer: View? = null
     private var micIcon: ImageView? = null
     private var micBlurLayer: ImageView? = null
     private var voiceContainer: View? = null
 
-    // Mini input
+    // mini-input UI
+    private var miniInputContainer: FrameLayout? = null
+    private var miniInputCard: FrameLayout? = null
     private var miniPaperclipButton: ImageButton? = null
     private var miniMicContainer: View? = null
     private var miniMicIcon: ImageView? = null
     private var miniVoiceContainer: View? = null
 
-    // Response
-    private var aiResponseTitle: TextView? = null
-    private var aiResponseIcon: ImageView? = null
+    // containers
+    private var overlayContainer: View? = null
 
-    // State
+    // state
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
     private var currentAnimator: ValueAnimator? = null
     private var lastImeHeight = 0
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var thinkingDotsRunnable: Runnable? = null
 
     private val dummyResponse =
-    "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
+        "Einstein's field equations are the core of Einstein's general theory of relativity. " +
+                "They describe how matter and energy in the universe curve the fabric of spacetime. " +
+                "Essentially, they tell us that the curvature of spacetime is directly related to " +
+                "the energy and momentum of whatever is present. The equations are a set of ten " +
+                "interrelated differential equations..."
 
-    // drag state
+    // drag
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
@@ -110,32 +116,35 @@ class IvoryOverlayService : Service() {
     private val idleHandler = Handler(Looper.getMainLooper())
     private val idleRunnable = Runnable { shrinkOrb() }
 
-    // params
+    // window params
     private lateinit var orbParams: WindowManager.LayoutParams
     private var screenW = 0
     private var screenH = 0
 
+    // ------------------------------------------------------------------------
+    // Service lifecycle
+    // ------------------------------------------------------------------------
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            display
-        } else {
-            wm!!.defaultDisplay
-        }
-        val size = android.graphics.Point()
+
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else wm!!.defaultDisplay
+        val size = Point()
         display?.getRealSize(size)
         screenW = size.x
         screenH = size.y
 
         createOverlay()
-        startForeground(1, android.app.Notification()) 
+        startForeground(1, Notification())
     }
 
+    // ------------------------------------------------------------------------
+    // Overlay creation
+    // ------------------------------------------------------------------------
     private fun createOverlay() {
-        // ----- ROOT container (covers whole screen) -----
+        // ----- ROOT (full-screen) -----
         val root = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -143,34 +152,31 @@ class IvoryOverlayService : Service() {
             )
         }
 
-        // ----- REMOVE ZONE (bottom) -----
+        // ----- REMOVE ZONE -----
         removeZone = View(this).apply {
             isVisible = false
-            setBackgroundResource(R.drawable.remove_zone_bg) // red strip
+            setBackgroundResource(R.drawable.remove_zone_bg)
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(120)
             ).apply { gravity = Gravity.BOTTOM }
             root.addView(this)
         }
 
-        // ----- ORB: wrapper → wave → border → star -----
+        // ----- ORB -----
         val orbSize = dp(56)
         this.orbSize = orbSize
-
         orbWrapper = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
             clipToOutline = true
             elevation = 12f
         }
 
-        // Wave
         wave = WaveView(this@IvoryOverlayService).apply {
             isVisible = false
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
         }
         orbWrapper!!.addView(wave)
 
-        // Gradient border
         val border = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
             background = ContextCompat.getDrawable(this@IvoryOverlayService, R.drawable.gradient_border_light)
@@ -178,18 +184,14 @@ class IvoryOverlayService : Service() {
         }
         orbWrapper!!.addView(border)
 
-        // Star (on top)
         val star = ImageView(this).apply {
             setImageResource(R.drawable.ivorystar)
-            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
-                gravity = Gravity.CENTER
-            }
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply { gravity = Gravity.CENTER }
             scaleType = ImageView.ScaleType.CENTER_INSIDE
         }
         orbWrapper!!.addView(star)
         orb = star
 
-        // Window params
         orbParams = WindowManager.LayoutParams(
             orbSize, orbSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -203,11 +205,10 @@ class IvoryOverlayService : Service() {
             x = screenW - orbSize - dp(16)
             y = screenH / 2
         }
-
         wm!!.addView(orbWrapper, orbParams)
 
-        // Touch on wrapper
-        orbWrapper!!.setOnTouchListener { v, ev ->
+        // ----- ORB TOUCH -----
+        orbWrapper!!.setOnTouchListener { _, ev ->
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
                     isDragging = false
@@ -225,7 +226,6 @@ class IvoryOverlayService : Service() {
                     orbParams.x = initialX + dx
                     orbParams.y = initialY + dy
                     wm!!.updateViewLayout(orbWrapper, orbParams)
-
                     val bottomThreshold = screenH - dp(120)
                     removeZone?.isVisible = orbParams.y > bottomThreshold
                     isDragging = true
@@ -248,17 +248,18 @@ class IvoryOverlayService : Service() {
             }
         }
 
-        // ----- INPUT CARD  -----
+        // ----- INPUT CARD -----
         val inflater = LayoutInflater.from(this)
         inputCard = inflater.inflate(R.layout.assist_overlay, root, false) as FrameLayout
-        // hide everything except the originalInputCard
+
+        // hide everything except the original card
         inputCard?.findViewById<FrameLayout>(R.id.originalInputCard)?.isVisible = true
         inputCard?.findViewById<FrameLayout>(R.id.responseCard)?.isVisible = false
         inputCard?.findViewById<FrameLayout>(R.id.thinkingCard)?.isVisible = false
         inputCard?.isVisible = false
         root.addView(inputCard)
 
-        // Bind new views
+        // ----- BIND VIEWS -----
         originalInputCard = inputCard?.findViewById(R.id.originalInputCard)
         thinkingCard = inputCard?.findViewById(R.id.thinkingCard)
         responseCard = inputCard?.findViewById(R.id.responseCard)
@@ -266,64 +267,66 @@ class IvoryOverlayService : Service() {
         thinkingIvoryStar = inputCard?.findViewById(R.id.thinkingIvoryStar)
         thinkingText = inputCard?.findViewById(R.id.thinkingText)
         aiResponseText = inputCard?.findViewById(R.id.aiResponseText)
+        aiResponseTitle = inputCard?.findViewById(R.id.aiResponseTitle)
+        aiResponseIcon = inputCard?.findViewById(R.id.aiResponseIcon)
+
         inputField = inputCard?.findViewById(R.id.inputField)
         sendButton = inputCard?.findViewById(R.id.sendButton)
         miniInputField = inputCard?.findViewById(R.id.miniInputField)
         miniSendButton = inputCard?.findViewById(R.id.miniSendButton)
 
-        overlayContainer      = inputCard?.findViewById(R.id.overlayContainer)
-        miniInputContainer    = inputCard?.findViewById(R.id.miniInputContainer)
-        miniInputCard         = inputCard?.findViewById(R.id.miniInputCard)
+        overlayContainer = inputCard?.findViewById(R.id.overlayContainer)
+        miniInputContainer = inputCard?.findViewById(R.id.miniInputContainer)
+        miniInputCard = inputCard?.findViewById(R.id.miniInputCard)
 
-        paperclipButton       = inputCard?.findViewById(R.id.paperclipButton)
-        micContainer          = inputCard?.findViewById(R.id.micContainer)
-        micIcon               = inputCard?.findViewById(R.id.micIcon)
-        micBlurLayer          = inputCard?.findViewById(R.id.micBlurLayer)
-        voiceContainer        = inputCard?.findViewById(R.id.voiceContainer)
+        paperclipButton = inputCard?.findViewById(R.id.paperclipButton)
+        micContainer = inputCard?.findViewById(R.id.micContainer)
+        micIcon = inputCard?.findViewById(R.id.micIcon)
+        micBlurLayer = inputCard?.findViewById(R.id.micBlurLayer)
+        voiceContainer = inputCard?.findViewById(R.id.voiceContainer)
 
-        miniPaperclipButton   = inputCard?.findViewById(R.id.miniPaperclipButton)
-        miniMicContainer      = inputCard?.findViewById(R.id.miniMicContainer)
-        miniMicIcon           = inputCard?.findViewById(R.id.miniMicIcon)
-        miniVoiceContainer    = inputCard?.findViewById(R.id.miniVoiceContainer)
+        miniPaperclipButton = inputCard?.findViewById(R.id.miniPaperclipButton)
+        miniMicContainer = inputCard?.findViewById(R.id.miniMicContainer)
+        miniMicIcon = inputCard?.findViewById(R.id.miniMicIcon)
+        miniVoiceContainer = inputCard?.findViewById(R.id.miniVoiceContainer)
 
-        aiResponseTitle       = inputCard?.findViewById(R.id.aiResponseTitle)
-        aiResponseIcon        = inputCard?.findViewById(R.id.aiResponseIcon)
-
+        // ----- UI SETUP -----
         setupOverlayUi()
         setupImeInsetListener()
         applyTheme()
         applyGradientToTitle()
 
-        // Setup send buttons
         sendButton?.setOnClickListener { onSend(inputField) }
         miniSendButton?.setOnClickListener { onSend(miniInputField) }
 
-        // ----- Add everything to WindowManager -----
-        // Root covers full screen (for inputCard + removeZone)
-        wm!!.addView(root, WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            orbParams.type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ))
+        // ----- ADD ROOT TO WINDOW -----
+        wm!!.addView(
+            root,
+            WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                orbParams.type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            )
+        )
     }
 
-    // -------------------------------------------------
-    // UI SETUP
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // UI wiring (identical to AssistOverlayActivity)
+    // ------------------------------------------------------------------------
     private fun setupOverlayUi() {
-        // Outside tap → hide the whole card
+        // outside tap → hide card
         inputCard?.findViewById<View>(R.id.rootOverlay)
             ?.setOnClickListener { hideInputCard() }
 
-        // Prevent clicks from bubbling through the cards
+        // prevent bubbling
         originalInputCard?.setOnClickListener { /* no-op */ }
         responseCard?.setOnClickListener { /* no-op */ }
         miniInputCard?.setOnClickListener { /* no-op */ }
 
-        // ----- ORIGINAL INPUT -------------------------------------------------
+        // ----- ORIGINAL INPUT -----
         paperclipButton?.setOnClickListener { Log.d("Overlay", "Paperclip tapped") }
 
         voiceContainer?.setOnClickListener {
@@ -358,7 +361,7 @@ class IvoryOverlayService : Service() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // ----- MINI INPUT ----------------------------------------------------
+        // ----- MINI INPUT -----
         miniPaperclipButton?.setOnClickListener { Log.d("Overlay", "Mini paperclip tapped") }
 
         miniVoiceContainer?.setOnClickListener {
@@ -386,9 +389,9 @@ class IvoryOverlayService : Service() {
         })
     }
 
-    // -------------------------------------------------
-    // KEYBOARD INSET HANDLING
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Keyboard handling
+    // ------------------------------------------------------------------------
     private fun setupImeInsetListener() {
         inputCard?.findViewById<View>(R.id.rootOverlay)
             ?.setOnApplyWindowInsetsListener { _, insets ->
@@ -409,24 +412,23 @@ class IvoryOverlayService : Service() {
 
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
-            addUpdateListener {
-                overlayContainer?.translationY = it.animatedValue as Float
-            }
+            addUpdateListener { overlayContainer?.translationY = it.animatedValue as Float }
             start()
         }
     }
 
-    // -------------------------------------------------
-    // THEMING
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Theming
+    // ------------------------------------------------------------------------
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
+
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
-        val iconTint  = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
 
-        // Text
+        // text
         inputField?.setTextColor(textColor)
         inputField?.setHintTextColor(hintColor)
         miniInputField?.setTextColor(textColor)
@@ -434,7 +436,7 @@ class IvoryOverlayService : Service() {
         thinkingText?.setTextColor(textColor)
         aiResponseText?.setTextColor(textColor)
 
-        // Icons
+        // icons
         paperclipButton?.setColorFilter(iconTint)
         sendButton?.setColorFilter(iconTint)
         micIcon?.setColorFilter(iconTint)
@@ -442,8 +444,8 @@ class IvoryOverlayService : Service() {
         miniSendButton?.setColorFilter(iconTint)
         miniMicIcon?.setColorFilter(iconTint)
 
-        // Backgrounds
-        val bg = ContextCompat.getDrawable(
+        // backgrounds
+        val bg: Drawable? = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
         )
@@ -452,8 +454,8 @@ class IvoryOverlayService : Service() {
         responseCard?.background = bg
         miniInputCard?.background = bg
 
-        // Gradient borders
-        val gradientBorder = ContextCompat.getDrawable(
+        // gradient borders
+        val gradientBorder: Drawable? = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         )
@@ -463,9 +465,9 @@ class IvoryOverlayService : Service() {
         applyGradientToTitle()
     }
 
-    // -------------------------------------------------
-    // GRADIENT TITLE
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Gradient title / icon
+    // ------------------------------------------------------------------------
     private fun applyGradientToTitle() {
         aiResponseTitle?.post {
             val w = aiResponseTitle?.width?.toFloat() ?: return@post
@@ -478,7 +480,6 @@ class IvoryOverlayService : Service() {
             aiResponseTitle?.paint?.shader = gradient
         }
 
-        // Icon gradient (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             aiResponseIcon?.post {
                 val w = aiResponseIcon?.width?.toFloat() ?: return@post
@@ -489,10 +490,7 @@ class IvoryOverlayService : Service() {
                     Shader.TileMode.CLAMP
                 )
                 aiResponseIcon?.setColorFilter(
-                    android.graphics.BlendModeColorFilter(
-                        Color.parseColor("#e63946"),
-                        BlendMode.SRC_IN
-                    )
+                    BlendModeColorFilter(Color.parseColor("#e63946"), BlendMode.SRC_IN)
                 )
             }
         } else {
@@ -500,9 +498,9 @@ class IvoryOverlayService : Service() {
         }
     }
 
-    // -------------------------------------------------
-    // MIC LISTENING ANIMATION
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Mic listening animation
+    // ------------------------------------------------------------------------
     private fun startListeningAnimation() {
         isListening = true
         micIcon?.apply {
@@ -536,16 +534,16 @@ class IvoryOverlayService : Service() {
         }, 100)
     }
 
-    // -------------------------------------------------
-    // HELPERS
-    // -------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------------
     private fun hideInputCard() {
         inputCard?.animate()
             ?.alpha(0f)
             ?.scaleX(0.3f)
             ?.scaleY(0.3f)
-            ?.translationX((orbParams.x + orbSize / 2f - screenW / 2))
-            ?.translationY((orbParams.y + orbSize / 2f - dp(80)))
+            ?.translationX(orbParams.x + orbSize / 2f - screenW / 2f)
+            ?.translationY(orbParams.y + orbSize / 2f - dp(80))
             ?.setDuration(300)
             ?.withEndAction {
                 inputCard?.isVisible = false
@@ -554,48 +552,50 @@ class IvoryOverlayService : Service() {
     }
 
     private fun openMainApp(query: String?) {
-        val intent = Intent(this, MainActivity::class.java).apply {
+        val i = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("fromOverlay", true)
             query?.let { putExtra("query", it) }
         }
-        startActivity(intent)
+        startActivity(i)
     }
 
     private fun onSend(editText: EditText?) {
         val text = editText?.text?.toString()?.trim() ?: return
         if (text.isEmpty()) return
-
         editText.text.clear()
         hideKeyboard()
         startThinkingPhase()
     }
 
+    private fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        inputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+        miniInputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+    }
+
+    // ------------------------------------------------------------------------
+    // Thinking → Response flow (unchanged)
+    // ------------------------------------------------------------------------
     private fun startThinkingPhase() {
         originalInputCard?.visibility = View.GONE
         responseCard?.visibility = View.GONE
-
         thinkingCard?.visibility = View.VISIBLE
         thinkingCard?.alpha = 0f
         thinkingCard?.animate()?.alpha(1f)?.setDuration(200)?.start()
-
         startSpinningAnimation()
         animateThinkingDots()
-
         uiHandler.postDelayed({ showResponsePhase() }, 5000)
     }
 
     private fun showResponsePhase() {
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
         thinkingIvoryStar?.clearAnimation()
-
         thinkingCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
             thinkingCard?.visibility = View.GONE
-
             responseCard?.visibility = View.VISIBLE
             responseCard?.alpha = 0f
             responseCard?.animate()?.alpha(1f)?.setDuration(300)?.start()
-
             startTypewriterEffect()
         }?.start()
     }
@@ -636,16 +636,12 @@ class IvoryOverlayService : Service() {
         }
     }
 
-    private fun hideKeyboard() {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        inputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
-        miniInputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
-    }
-
+    // ------------------------------------------------------------------------
+    // Orb tap / drag helpers
+    // ------------------------------------------------------------------------
     private fun onOrbTap() {
         wave?.isVisible = true
         wave?.startAnimation()
-
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.3f
@@ -661,28 +657,24 @@ class IvoryOverlayService : Service() {
             ?.translationY(0f)
             ?.setDuration(350)
             ?.setInterpolator(DecelerateInterpolator())
-            ?.withEndAction {
-                originalInputCard?.visibility = View.VISIBLE
-            }
+            ?.withEndAction { originalInputCard?.visibility = View.VISIBLE }
             ?.start()
 
-        applyTheme()
+        applyTheme()   // refresh theme every time the card appears
     }
 
     private fun snapOrbToEdge() {
         val targetX = if (orbParams.x > screenW / 2) screenW - dp(72) else dp(16)
-
         val xHolder = PropertyValuesHolder.ofInt("x", orbParams.x, targetX)
-
-        val animX = ObjectAnimator.ofPropertyValuesHolder(orbParams, xHolder).apply {
+        ObjectAnimator.ofPropertyValuesHolder(orbParams, xHolder).apply {
             duration = 250
             interpolator = DecelerateInterpolator()
             addUpdateListener {
                 orbParams.x = it.getAnimatedValue("x") as Int
                 wm!!.updateViewLayout(orbWrapper, orbParams)
             }
+            start()
         }
-        animX.start()
     }
 
     private fun expandOrb() {
@@ -710,6 +702,9 @@ class IvoryOverlayService : Service() {
         idleHandler.postDelayed(idleRunnable, 3000)
     }
 
+    // ------------------------------------------------------------------------
+    // Service commands
+    // ------------------------------------------------------------------------
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_SHOW -> {
@@ -729,7 +724,6 @@ class IvoryOverlayService : Service() {
         thinkingIvoryStar?.clearAnimation()
         wm?.let {
             orbWrapper?.let { v -> it.removeView(v) }
-            // root is removed automatically
         }
         super.onDestroy()
     }
