@@ -150,19 +150,11 @@ class IvoryOverlayService : Service() {
             
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager?.createNotificationChannel(channel)
-
-            val pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
             
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("Ivory Assistant")
                 .setContentText("Floating button is active")
-                .setSmallIcon(android.R.drawable.ivorystar)
-                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.drawable.ivorystar)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
                 .build()
