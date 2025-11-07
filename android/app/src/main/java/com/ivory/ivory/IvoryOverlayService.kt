@@ -485,7 +485,7 @@ class IvoryOverlayService : Service() {
     private fun setupImeInsetListener() {
         rootOverlay?.setOnApplyWindowInsetsListener { _, insets ->
             val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
-            if (imeHeight ≠ lastImeHeight) {
+            if (imeHeight != lastImeHeight) {
                 lastImeHeight = imeHeight
                 animateOverlayForKeyboard(imeHeight)
             }
@@ -649,7 +649,7 @@ class IvoryOverlayService : Service() {
         val bottomEdge = screenH - orbSize
 
         val targetX = if (centerX < screenW / 2) 0 else screenW - orbSize
-        val targetY = = orbParams.y.coerceIn(topEdge, bottomEdge)
+        val targetY = orbParams.y.coerceIn(topEdge, bottomEdge)
 
         val xHolder = PropertyValuesHolder.ofInt("x", orbParams.x, targetX)
         val yHolder = PropertyValuesHolder.ofInt("y", orbParams.y, targetY)
