@@ -134,6 +134,21 @@ class IvoryOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
 
+        if (wm == null) {
+            Log.e("IvoryOverlay", "WindowManager is null, cannot create overlay")
+            stopSelf()
+            return
+        }
+        
+        if (screenW == 0 || screenH == 0) {
+            Log.e("IvoryOverlay", "Invalid screen dimensions: ${screenW}x${screenH}")
+            stopSelf()
+            return
+        }
+            
+        Log.d("IvoryOverlay", "Service onCreate() called")
+
+        // Create notification for foreground service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "ivory_overlay_channel"
             val channelName = "Ivory Assistant Overlay"
@@ -152,7 +167,7 @@ class IvoryOverlayService : Service() {
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("Ivory Assistant")
                 .setContentText("Floating button is active")
-                .setSmallIcon(R.drawable.ivorystar)
+                .setSmallIcon(android.R.drawable.ic_dialog_info) // Use system icon as fallback
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
                 .build()
@@ -161,14 +176,31 @@ class IvoryOverlayService : Service() {
         }
         
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else wm!!.defaultDisplay
+        
+        // FIXED: Get display size from WindowManager instead of display
         val size = Point()
-        display?.getRealSize(size)
-        screenW = size.x
-        screenH = size.y
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = wm!!.currentWindowMetrics
+            val bounds = windowMetrics.bounds
+            screenW = bounds.width()
+            screenH = bounds.height()
+            Log.d("IvoryOverlay", "Screen size (R+): ${screenW}x${screenH}")
+        } else {
+            @Suppress("DEPRECATION")
+            val display = wm!!.defaultDisplay
+            display?.getRealSize(size)
+            screenW = size.x
+            screenH = size.y
+            Log.d("IvoryOverlay", "Screen size (legacy): ${screenW}x${screenH}")
+        }
 
-        createOverlay()
+        try {
+            createOverlay()
+            Log.d("IvoryOverlay", "Overlay created successfully")
+        } catch (e: Exception) {
+            Log.e("IvoryOverlay", "Error creating overlay: ${e.message}", e)
+            stopSelf()
+        }
     }
 
     // ------------------------------------------------------------------------
