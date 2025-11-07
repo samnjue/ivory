@@ -53,7 +53,6 @@ class IvoryOverlayService : Service() {
     private var orbWrapper: FrameLayout? = null
     private var gradientBorder: GradientBorderView? = null
     private var blackFill: View? = null
-    private var wave: WaveView? = null
     private var starIcon: ImageView? = null
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
@@ -187,7 +186,6 @@ class IvoryOverlayService : Service() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             isVisible = false
-            setOnClickListener { hideInputCard() }
         }
 
         // Orb
@@ -196,25 +194,23 @@ class IvoryOverlayService : Service() {
             layoutParams = FrameLayout.LayoutParams(orbSize * 2, orbSize * 2).apply {
                 gravity = Gravity.CENTER
             }
-            // Remove clipToOutline and clipChildren to prevent clipping during scale
             clipToOutline = false
             clipChildren = false
         }
 
-        // Create a circular background for the orb
-        val orbBackground = View(this).apply {
+        // Black translucent fill (40% alpha = 0x66)
+        blackFill = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply {
                 gravity = Gravity.CENTER
             }
-            // Use solid color matching your desired background
-            setBackgroundColor(Color.parseColor("#484b5a"))
+            setBackgroundColor(Color.parseColor("#66000000"))
             elevation = 12f
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(v: View, o: Outline) = o.setOval(0, 0, orbSize, orbSize)
             }
             clipToOutline = true
         }
-        orbWrapper!!.addView(orbBackground)
+        orbWrapper!!.addView(blackFill)
 
         // Gradient border
         gradientBorder = GradientBorderView(this).apply {
@@ -223,15 +219,6 @@ class IvoryOverlayService : Service() {
             }
         }
         orbWrapper!!.addView(gradientBorder)
-
-        // Wave
-        wave = WaveView(this).apply {
-            isVisible = false
-            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply {
-                gravity = Gravity.CENTER
-            }
-        }
-        orbWrapper!!.addView(wave)
 
         // Star icon
         starIcon = ImageView(this).apply {
@@ -335,23 +322,23 @@ class IvoryOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenW - orbSize - dp(8)
+            x = screenW - orbSize * 2 - dp(16)
             y = screenH / 2
         }
         wm!!.addView(orbContainer, orbParams)
 
-        // Window params for card container (full screen)
+        // Window params for card container (full screen, focusable for keyboard)
         cardParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             windowType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         }
         wm!!.addView(cardContainer, cardParams)
 
@@ -445,59 +432,6 @@ class IvoryOverlayService : Service() {
         }
     }
 
-    // Wave View
-    inner class WaveView(context: Context) : View(context) {
-        private var offset = 0f
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#33FFFFFF")
-            style = Paint.Style.FILL
-        }
-
-        fun startAnimation() {
-            isVisible = true
-            offset = 0f
-            animateRise()
-        }
-
-        private fun animateRise() {
-            ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 400
-                interpolator = DecelerateInterpolator()
-                addUpdateListener {
-                    offset = it.animatedFraction
-                    invalidate()
-                }
-                start()
-            }
-        }
-
-        fun drop() {
-            ValueAnimator.ofFloat(offset, 0f).apply {
-                duration = 300
-                addUpdateListener {
-                    offset = it.animatedFraction
-                    invalidate()
-                    if (it.animatedFraction == 0f) isVisible = false
-                }
-                start()
-            }
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            val cy = height / 2f
-            val amp = orbSize * 0.6f * offset
-            val path = Path().apply { moveTo(0f, cy) }
-            for (x in 0..width step 4) {
-                val y = cy + amp * Math.sin(x * 0.05 + offset * 10).toFloat()
-                path.lineTo(x.toFloat(), y)
-            }
-            path.lineTo(width.toFloat(), height.toFloat())
-            path.lineTo(0f, height.toFloat())
-            path.close()
-            canvas.drawPath(path, paint)
-        }
-    }
-
     // UI Setup
     private fun setupOverlayUi() {
         rootOverlay?.setOnClickListener { hideInputCard() }
@@ -560,14 +494,9 @@ class IvoryOverlayService : Service() {
     private fun setupImeInsetListener() {
         rootOverlay?.setOnApplyWindowInsetsListener { _, insets ->
             val h = insets.getInsets(WindowInsets.Type.ime()).bottom
-            if (h != lastImeHeight) { lastImeHeight = h; animateOverlayForKeyboard(h) }
+            if (h != lastImeHeight) { lastImeHeight = h }
             insets
         }
-    }
-
-    private fun animateOverlayForKeyboard(h: Int) {
-        // Handle keyboard appearance - adjust card position if needed
-        // For now, the card container is full screen so it should work
     }
 
     // Theme
@@ -638,29 +567,79 @@ class IvoryOverlayService : Service() {
 
     // Orb Tap
     private fun onOrbTap() {
-        wave?.startAnimation()
+        // Make card container focusable so keyboard can appear
+        cardParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+        wm?.updateViewLayout(cardContainer, cardParams)
+
         cardContainer?.isVisible = true
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.8f; inputCard?.scaleY = 0.8f
+
+        // Position card next to orb, slightly below
+        positionCardNearOrb()
 
         inputCard?.animate()
             ?.alpha(1f)?.scaleX(1f)?.scaleY(1f)
             ?.setDuration(350)?.setInterpolator(DecelerateInterpolator())
             ?.withEndAction {
                 originalInputCard?.visibility = View.VISIBLE
+                // Request focus and show keyboard
                 inputField?.requestFocus()
+                inputField?.postDelayed({
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
+                }, 150)
             }?.start()
+    }
+
+    private fun positionCardNearOrb() {
+        val cardWidth = dp(320)
+        val cardHeight = dp(300)
+        val spacing = dp(12)
+        val offsetY = dp(20)
+
+        // Determine if orb is on left or right side
+        val orbCenterX = orbParams.x + orbSize
+        val isOrbOnRight = orbCenterX > screenW / 2
+
+        // Calculate card position
+        val cardX = if (isOrbOnRight) {
+            // Place card to the left of orb
+            (orbParams.x - cardWidth - spacing).coerceAtLeast(dp(8))
+        } else {
+            // Place card to the right of orb
+            (orbParams.x + orbSize * 2 + spacing).coerceAtMost(screenW - cardWidth - dp(8))
+        }
+
+        val cardY = (orbParams.y + orbSize + offsetY).coerceIn(dp(8), screenH - cardHeight - dp(8))
+
+        inputCard?.translationX = cardX.toFloat()
+        inputCard?.translationY = cardY.toFloat()
     }
 
     private fun hideInputCard() {
         hideKeyboard()
+        
+        // Make card container not focusable
+        cardParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+        wm?.updateViewLayout(cardContainer, cardParams)
+
         inputCard?.animate()
             ?.alpha(0f)?.scaleX(0.8f)?.scaleY(0.8f)
             ?.setDuration(300)
             ?.withEndAction {
                 inputCard?.isVisible = false
                 cardContainer?.isVisible = false
+                // Reset card visibility states
+                originalInputCard?.visibility = View.VISIBLE
+                thinkingCard?.visibility = View.GONE
+                responseCard?.visibility = View.GONE
                 scheduleIdleShrink()
             }
             ?.start()
@@ -676,7 +655,6 @@ class IvoryOverlayService : Service() {
         orbWrapper?.animate()
             ?.scaleX(0.8f)?.scaleY(0.8f)?.alpha(1f)
             ?.setDuration(300)
-            ?.withEndAction { wave?.drop() }
             ?.start()
     }
 
@@ -687,9 +665,14 @@ class IvoryOverlayService : Service() {
 
     // Snap
     private fun snapOrbToEdge() {
-        val cx = orbParams.x + orbSize / 2f
-        val tx = if (cx < screenW / 2) 0 else screenW - orbSize
-        val ty = orbParams.y.coerceIn(0, screenH - orbSize)
+        val orbCenterX = orbParams.x + orbSize
+        val margin = dp(16)
+        
+        // Snap to left or right edge with margin
+        val tx = if (orbCenterX < screenW / 2) margin else screenW - orbSize * 2 - margin
+        
+        // Keep within vertical bounds with margin
+        val ty = orbParams.y.coerceIn(margin, screenH - orbSize * 2 - margin)
 
         val xh = PropertyValuesHolder.ofInt("x", orbParams.x, tx)
         val yh = PropertyValuesHolder.ofInt("y", orbParams.y, ty)
