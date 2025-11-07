@@ -25,6 +25,7 @@ class IvoryOverlayService : Service() {
         const val ACTION_SHOW = "com.ivory.ivory.SHOW_ORB"
         const val ACTION_HIDE = "com.ivory.ivory.HIDE_ORB"
 
+        @JvmStatic
         fun start(context: android.content.Context) {
             val i = Intent(context, IvoryOverlayService::class.java).apply {
                 action = ACTION_SHOW
@@ -36,6 +37,7 @@ class IvoryOverlayService : Service() {
             }
         }
 
+        @JvmStatic
         fun stop(context: android.content.Context) {
             val i = Intent(context, IvoryOverlayService::class.java).apply {
                 action = ACTION_HIDE
@@ -221,51 +223,6 @@ class IvoryOverlayService : Service() {
                     or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ))
-
-        // ----- Touch handling (on orbWrapper) -----
-        orbWrapper!!.setOnTouchListener { v, ev ->
-            when (ev.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    isDragging = false
-                    initialX = orbParams.x
-                    initialY = orbParams.y
-                    initialTouchX = ev.rawX
-                    initialTouchY = ev.rawY
-                    idleHandler.removeCallbacks(idleRunnable)
-                    expandOrb()
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (ev.rawX - initialTouchX).toInt()
-                    val dy = (ev.rawY - initialTouchY).toInt()
-                    orbParams.x = initialX + dx
-                    orbParams.y = initialY + dy
-
-                    // Update the orbWrapper directly
-                    wm!!.updateViewLayout(orbWrapper, orbParams)
-
-                    // Show/hide remove zone
-                    val bottomThreshold = screenH - dp(120)
-                    removeZone?.isVisible = orbParams.y > bottomThreshold
-                    isDragging = true
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (isDragging) {
-                        if (removeZone?.isVisible == true) {
-                            stopSelf()
-                            return@setOnTouchListener true
-                        }
-                        snapOrbToEdge()
-                    } else {
-                        onOrbTap()
-                    }
-                    scheduleIdleShrink()
-                    true
-                }
-                else -> false
-            }
-        }
     }
 
     private fun onOrbTap() {
