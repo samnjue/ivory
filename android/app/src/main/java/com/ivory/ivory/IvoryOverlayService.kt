@@ -54,6 +54,51 @@ class IvoryOverlayService : Service() {
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
 
+    private var originalInputCard: FrameLayout? = null
+    private var thinkingCard: FrameLayout? = null
+    private var responseCard: FrameLayout? = null
+    private var responseScrollView: ScrollView? = null
+    private var thinkingIvoryStar: ImageView? = null
+    private var thinkingText: TextView? = null
+    private var aiResponseText: TextView? = null
+    private var inputField: EditText? = null
+    private var sendButton: ImageButton? = null
+    private var miniInputField: EditText? = null
+    private var miniSendButton: ImageButton? = null
+
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var thinkingDotsRunnable: Runnable? = null
+
+    private var overlayContainer: View? = null
+    private var miniInputContainer: FrameLayout? = null
+    private var miniInputCard: FrameLayout? = null
+
+    // Original input
+    private var paperclipButton: ImageButton? = null
+    private var micContainer: View? = null
+    private var micIcon: ImageView? = null
+    private var micBlurLayer: ImageView? = null
+    private var voiceContainer: View? = null
+
+    // Mini input
+    private var miniPaperclipButton: ImageButton? = null
+    private var miniMicContainer: View? = null
+    private var miniMicIcon: ImageView? = null
+    private var miniVoiceContainer: View? = null
+
+    // Response
+    private var aiResponseTitle: TextView? = null
+    private var aiResponseIcon: ImageView? = null
+
+    // State
+    private var isListening = false
+    private val stopListeningHandler = Handler(Looper.getMainLooper())
+    private var currentAnimator: ValueAnimator? = null
+    private var lastImeHeight = 0
+
+    private val dummyResponse =
+    "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
+
     // drag state
     private var initialX = 0
     private var initialY = 0
@@ -213,6 +258,46 @@ class IvoryOverlayService : Service() {
         inputCard?.isVisible = false
         root.addView(inputCard)
 
+        // Bind new views
+        originalInputCard = inputCard?.findViewById(R.id.originalInputCard)
+        thinkingCard = inputCard?.findViewById(R.id.thinkingCard)
+        responseCard = inputCard?.findViewById(R.id.responseCard)
+        responseScrollView = inputCard?.findViewById(R.id.responseScrollView)
+        thinkingIvoryStar = inputCard?.findViewById(R.id.thinkingIvoryStar)
+        thinkingText = inputCard?.findViewById(R.id.thinkingText)
+        aiResponseText = inputCard?.findViewById(R.id.aiResponseText)
+        inputField = inputCard?.findViewById(R.id.inputField)
+        sendButton = inputCard?.findViewById(R.id.sendButton)
+        miniInputField = inputCard?.findViewById(R.id.miniInputField)
+        miniSendButton = inputCard?.findViewById(R.id.miniSendButton)
+
+        overlayContainer      = inputCard?.findViewById(R.id.overlayContainer)
+        miniInputContainer    = inputCard?.findViewById(R.id.miniInputContainer)
+        miniInputCard         = inputCard?.findViewById(R.id.miniInputCard)
+
+        paperclipButton       = inputCard?.findViewById(R.id.paperclipButton)
+        micContainer          = inputCard?.findViewById(R.id.micContainer)
+        micIcon               = inputCard?.findViewById(R.id.micIcon)
+        micBlurLayer          = inputCard?.findViewById(R.id.micBlurLayer)
+        voiceContainer        = inputCard?.findViewById(R.id.voiceContainer)
+
+        miniPaperclipButton   = inputCard?.findViewById(R.id.miniPaperclipButton)
+        miniMicContainer      = inputCard?.findViewById(R.id.miniMicContainer)
+        miniMicIcon           = inputCard?.findViewById(R.id.miniMicIcon)
+        miniVoiceContainer    = inputCard?.findViewById(R.id.miniVoiceContainer)
+
+        aiResponseTitle       = inputCard?.findViewById(R.id.aiResponseTitle)
+        aiResponseIcon        = inputCard?.findViewById(R.id.aiResponseIcon)
+
+        setupOverlayUi()
+        setupImeInsetListener()
+        applyTheme()
+        applyGradientToTitle()
+
+        // Setup send buttons
+        sendButton?.setOnClickListener { onSend(inputField) }
+        miniSendButton?.setOnClickListener { onSend(miniInputField) }
+
         // ----- Add everything to WindowManager -----
         // Root covers full screen (for inputCard + removeZone)
         wm!!.addView(root, WindowManager.LayoutParams(
@@ -225,12 +310,342 @@ class IvoryOverlayService : Service() {
         ))
     }
 
+    // -------------------------------------------------
+    // UI SETUP
+    // -------------------------------------------------
+    private fun setupOverlayUi() {
+        // Outside tap → hide the whole card
+        inputCard?.findViewById<View>(R.id.rootOverlay)
+            ?.setOnClickListener { hideInputCard() }
+
+        // Prevent clicks from bubbling through the cards
+        originalInputCard?.setOnClickListener { /* no-op */ }
+        responseCard?.setOnClickListener { /* no-op */ }
+        miniInputCard?.setOnClickListener { /* no-op */ }
+
+        // ----- ORIGINAL INPUT -------------------------------------------------
+        paperclipButton?.setOnClickListener { Log.d("Overlay", "Paperclip tapped") }
+
+        voiceContainer?.setOnClickListener {
+            openMainApp(null)
+            hideInputCard()
+        }
+
+        micContainer?.setOnClickListener {
+            if (!isListening) {
+                startListeningAnimation()
+                stopListeningHandler.postDelayed({ stopListeningAnimation() }, 5000)
+            } else {
+                stopListeningAnimation()
+            }
+        }
+
+        inputField?.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+
+        inputField?.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val hasText = !s.isNullOrEmpty()
+                voiceContainer?.visibility = if (hasText) View.GONE else View.VISIBLE
+                sendButton?.visibility = if (hasText) View.VISIBLE else View.GONE
+                if (hasText && isListening) stopListeningAnimation()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        // ----- MINI INPUT ----------------------------------------------------
+        miniPaperclipButton?.setOnClickListener { Log.d("Overlay", "Mini paperclip tapped") }
+
+        miniVoiceContainer?.setOnClickListener {
+            openMainApp(null)
+            hideInputCard()
+        }
+
+        miniMicContainer?.setOnClickListener { Log.d("Overlay", "Mini mic tapped") }
+
+        miniInputField?.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(miniInputField, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+
+        miniInputField?.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val hasText = !s.isNullOrEmpty()
+                miniVoiceContainer?.visibility = if (hasText) View.GONE else View.VISIBLE
+                miniSendButton?.visibility = if (hasText) View.VISIBLE else View.GONE
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
+    // -------------------------------------------------
+    // KEYBOARD INSET HANDLING
+    // -------------------------------------------------
+    private fun setupImeInsetListener() {
+        inputCard?.findViewById<View>(R.id.rootOverlay)
+            ?.setOnApplyWindowInsetsListener { _, insets ->
+                val imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom
+                if (imeHeight != lastImeHeight) {
+                    lastImeHeight = imeHeight
+                    animateOverlayForKeyboard(imeHeight)
+                }
+                insets
+            }
+    }
+
+    private fun animateOverlayForKeyboard(imeHeight: Int) {
+        currentAnimator?.cancel()
+        val from = overlayContainer?.translationY ?: 0f
+        val extraLift = (20 * resources.displayMetrics.density).toInt()
+        val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
+
+        currentAnimator = ValueAnimator.ofFloat(from, to).apply {
+            duration = 250
+            addUpdateListener {
+                overlayContainer?.translationY = it.animatedValue as Float
+            }
+            start()
+        }
+    }
+
+    // -------------------------------------------------
+    // THEMING
+    // -------------------------------------------------
+    private fun applyTheme() {
+        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
+        val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
+        val iconTint  = if (isDark) Color.WHITE else Color.parseColor("#333333")
+
+        // Text
+        inputField?.setTextColor(textColor)
+        inputField?.setHintTextColor(hintColor)
+        miniInputField?.setTextColor(textColor)
+        miniInputField?.setHintTextColor(hintColor)
+        thinkingText?.setTextColor(textColor)
+        aiResponseText?.setTextColor(textColor)
+
+        // Icons
+        paperclipButton?.setColorFilter(iconTint)
+        sendButton?.setColorFilter(iconTint)
+        micIcon?.setColorFilter(iconTint)
+        miniPaperclipButton?.setColorFilter(iconTint)
+        miniSendButton?.setColorFilter(iconTint)
+        miniMicIcon?.setColorFilter(iconTint)
+
+        // Backgrounds
+        val bg = ContextCompat.getDrawable(
+            this,
+            if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
+        )
+        originalInputCard?.background = bg
+        thinkingCard?.background = bg
+        responseCard?.background = bg
+        miniInputCard?.background = bg
+
+        // Gradient borders
+        val gradientBorder = ContextCompat.getDrawable(
+            this,
+            if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
+        )
+        voiceContainer?.background = gradientBorder
+        miniVoiceContainer?.background = gradientBorder
+
+        applyGradientToTitle()
+    }
+
+    // -------------------------------------------------
+    // GRADIENT TITLE
+    // -------------------------------------------------
+    private fun applyGradientToTitle() {
+        aiResponseTitle?.post {
+            val w = aiResponseTitle?.width?.toFloat() ?: return@post
+            val gradient = LinearGradient(
+                0f, 0f, w, 0f,
+                Color.parseColor("#e63946"),
+                Color.parseColor("#4285f4"),
+                Shader.TileMode.CLAMP
+            )
+            aiResponseTitle?.paint?.shader = gradient
+        }
+
+        // Icon gradient (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            aiResponseIcon?.post {
+                val w = aiResponseIcon?.width?.toFloat() ?: return@post
+                val gradient = LinearGradient(
+                    0f, 0f, w, 0f,
+                    Color.parseColor("#e63946"),
+                    Color.parseColor("#4285f4"),
+                    Shader.TileMode.CLAMP
+                )
+                aiResponseIcon?.setColorFilter(
+                    android.graphics.BlendModeColorFilter(
+                        Color.parseColor("#e63946"),
+                        BlendMode.SRC_IN
+                    )
+                )
+            }
+        } else {
+            aiResponseIcon?.setColorFilter(Color.parseColor("#e63946"))
+        }
+    }
+
+    // -------------------------------------------------
+    // MIC LISTENING ANIMATION
+    // -------------------------------------------------
+    private fun startListeningAnimation() {
+        isListening = true
+        micIcon?.apply {
+            setImageResource(R.drawable.ic_mic_gradient)
+            clearColorFilter()
+            startAnimation(AnimationUtils.loadAnimation(this@IvoryOverlayService, R.anim.mic_pulse))
+        }
+        micBlurLayer?.apply {
+            setImageResource(R.drawable.ic_mic_gradient)
+            visibility = View.VISIBLE
+            alpha = 0.7f
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                setRenderEffect(RenderEffect.createBlurEffect(20f, 20f, Shader.TileMode.CLAMP))
+            }
+            startAnimation(AnimationUtils.loadAnimation(this@IvoryOverlayService, R.anim.mic_blur_pulse))
+        }
+    }
+
+    private fun stopListeningAnimation() {
+        stopListeningHandler.removeCallbacksAndMessages(null)
+        isListening = false
+        micIcon?.clearAnimation()
+        micBlurLayer?.apply {
+            clearAnimation()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setRenderEffect(null)
+            visibility = View.GONE
+        }
+        Handler(Looper.getMainLooper()).postDelayed({
+            micIcon?.setImageResource(R.drawable.ic_mic)
+            applyTheme()
+        }, 100)
+    }
+
+    // -------------------------------------------------
+    // HELPERS
+    // -------------------------------------------------
+    private fun hideInputCard() {
+        inputCard?.animate()
+            ?.alpha(0f)
+            ?.scaleX(0.3f)
+            ?.scaleY(0.3f)
+            ?.translationX((orbParams.x + orbSize / 2f - screenW / 2))
+            ?.translationY((orbParams.y + orbSize / 2f - dp(80)))
+            ?.setDuration(300)
+            ?.withEndAction {
+                inputCard?.isVisible = false
+                scheduleIdleShrink()
+            }?.start()
+    }
+
+    private fun openMainApp(query: String?) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("fromOverlay", true)
+            query?.let { putExtra("query", it) }
+        }
+        startActivity(intent)
+    }
+
+    private fun onSend(editText: EditText?) {
+        val text = editText?.text?.toString()?.trim() ?: return
+        if (text.isEmpty()) return
+
+        editText.text.clear()
+        hideKeyboard()
+        startThinkingPhase()
+    }
+
+    private fun startThinkingPhase() {
+        originalInputCard?.visibility = View.GONE
+        responseCard?.visibility = View.GONE
+
+        thinkingCard?.visibility = View.VISIBLE
+        thinkingCard?.alpha = 0f
+        thinkingCard?.animate()?.alpha(1f)?.setDuration(200)?.start()
+
+        startSpinningAnimation()
+        animateThinkingDots()
+
+        uiHandler.postDelayed({ showResponsePhase() }, 5000)
+    }
+
+    private fun showResponsePhase() {
+        thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
+        thinkingIvoryStar?.clearAnimation()
+
+        thinkingCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            thinkingCard?.visibility = View.GONE
+
+            responseCard?.visibility = View.VISIBLE
+            responseCard?.alpha = 0f
+            responseCard?.animate()?.alpha(1f)?.setDuration(300)?.start()
+
+            startTypewriterEffect()
+        }?.start()
+    }
+
+    private fun startTypewriterEffect() {
+        aiResponseText?.text = ""
+        val words = dummyResponse.split(" ")
+        var delay = 0L
+        for (word in words) {
+            uiHandler.postDelayed({
+                val cur = aiResponseText?.text?.toString() ?: ""
+                aiResponseText?.text = if (cur.isEmpty()) word else "$cur $word"
+                responseScrollView?.fullScroll(View.FOCUS_DOWN)
+            }, delay)
+            delay += 60
+        }
+    }
+
+    private fun animateThinkingDots() {
+        val dots = listOf("", ".", "..", "...")
+        var idx = 0
+        thinkingDotsRunnable = object : Runnable {
+            override fun run() {
+                if (thinkingCard?.visibility == View.VISIBLE) {
+                    thinkingText?.text = "Thinking${dots[idx]}"
+                    idx = (idx + 1) % dots.size
+                    uiHandler.postDelayed(this, 500)
+                }
+            }
+        }
+        thinkingDotsRunnable?.let { uiHandler.post(it) }
+    }
+
+    private fun startSpinningAnimation() {
+        thinkingIvoryStar?.let { star ->
+            val anim = AnimationUtils.loadAnimation(this, R.anim.rotate_indefinite)
+            star.startAnimation(anim)
+        }
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        inputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+        miniInputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+    }
+
     private fun onOrbTap() {
-        // Show wave *inside* the orb
         wave?.isVisible = true
         wave?.startAnimation()
 
-        // Animate input card out from orb center
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.3f
@@ -246,7 +661,12 @@ class IvoryOverlayService : Service() {
             ?.translationY(0f)
             ?.setDuration(350)
             ?.setInterpolator(DecelerateInterpolator())
+            ?.withEndAction {
+                originalInputCard?.visibility = View.VISIBLE
+            }
             ?.start()
+
+        applyTheme()
     }
 
     private fun snapOrbToEdge() {
@@ -293,7 +713,8 @@ class IvoryOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_SHOW -> {
-                // already created in onCreate()
+                orbWrapper?.visibility = View.VISIBLE
+                removeZone?.visibility = View.GONE
             }
             ACTION_HIDE -> stopSelf()
         }
@@ -302,6 +723,10 @@ class IvoryOverlayService : Service() {
 
     override fun onDestroy() {
         idleHandler.removeCallbacksAndMessages(null)
+        stopListeningHandler.removeCallbacksAndMessages(null)
+        uiHandler.removeCallbacksAndMessages(null)
+        currentAnimator?.cancel()
+        thinkingIvoryStar?.clearAnimation()
         wm?.let {
             orbWrapper?.let { v -> it.removeView(v) }
             // root is removed automatically
