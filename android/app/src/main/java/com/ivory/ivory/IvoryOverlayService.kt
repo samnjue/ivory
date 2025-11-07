@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.ivory.ivory.R
 import com.ivory.ivory.WaveView
+import android.app.Notification
+import android.content.res.Configuration
 
 class IvoryOverlayService : Service() {
 
