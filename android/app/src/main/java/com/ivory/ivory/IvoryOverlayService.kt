@@ -6,6 +6,7 @@ import android.graphics.PixelFormat
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
 import android.view.animation.DecelerateInterpolator
+import androidx.core.content.ContextCompat
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -46,6 +47,7 @@ class IvoryOverlayService : Service() {
     private var wm: WindowManager? = null
     private var orb: ImageView? = null
     private var wave: WaveView? = null
+    private var orbSize = 0
     private var orbWrapper: FrameLayout? = null  
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
@@ -106,6 +108,7 @@ class IvoryOverlayService : Service() {
 
         // ----- ORB: wrapper → wave → border → star -----
         val orbSize = dp(56)
+        this.orbSize = orbSize
 
         orbWrapper = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
@@ -157,7 +160,46 @@ class IvoryOverlayService : Service() {
         wm!!.addView(orbWrapper, orbParams)
 
         // Touch on wrapper
-        orbWrapper!!.setOnTouchListener { v, ev -> ... }
+        orbWrapper!!.setOnTouchListener { v, ev ->
+            when (ev.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isDragging = false
+                    initialX = orbParams.x
+                    initialY = orbParams.y
+                    initialTouchX = ev.rawX
+                    initialTouchY = ev.rawY
+                    idleHandler.removeCallbacks(idleRunnable)
+                    expandOrb()
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (ev.rawX - initialTouchX).toInt()
+                    val dy = (ev.rawY - initialTouchY).toInt()
+                    orbParams.x = initialX + dx
+                    orbParams.y = initialY + dy
+                    wm!!.updateViewLayout(orbWrapper, orbParams)
+
+                    val bottomThreshold = screenH - dp(120)
+                    removeZone?.isVisible = orbParams.y > bottomThreshold
+                    isDragging = true
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (isDragging) {
+                        if (removeZone?.isVisible == true) {
+                            stopSelf()
+                            return@setOnTouchListener true
+                        }
+                        snapOrbToEdge()
+                    } else {
+                        onOrbTap()
+                    }
+                    scheduleIdleShrink()
+                    true
+                }
+                else -> false
+            }
+        }
 
         // ----- INPUT CARD  -----
         val inflater = LayoutInflater.from(this)
@@ -179,9 +221,6 @@ class IvoryOverlayService : Service() {
                     or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ))
-
-        // Orb is added ONCE — directly
-        wm!!.addView(orbWrapper, orbParams)
 
         // ----- Touch handling (on orbWrapper) -----
         orbWrapper!!.setOnTouchListener { v, ev ->
