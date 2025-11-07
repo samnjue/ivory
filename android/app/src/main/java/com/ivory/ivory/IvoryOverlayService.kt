@@ -3,6 +3,9 @@ package com.ivory.ivory
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import android.view.animation.DecelerateInterpolator
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -41,9 +44,9 @@ class IvoryOverlayService : Service() {
     }
 
     private var wm: WindowManager? = null
-    private var orbContainer: ViewGroup? = null
     private var orb: ImageView? = null
     private var wave: WaveView? = null
+    private var orbWrapper: FrameLayout? = null  
     private var inputCard: FrameLayout? = null
     private var removeZone: View? = null
 
@@ -101,22 +104,49 @@ class IvoryOverlayService : Service() {
             root.addView(this)
         }
 
-        // ----- ORB (draggable) -----
+        // ----- ORB: wrapper → wave → border → star -----
         val orbSize = dp(56)
-        orb = ImageView(this).apply {
-            setImageResource(R.drawable.ivorystar)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
+
+        orbWrapper = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
+            clipToOutline = true
             elevation = 12f
-            background = getDrawable(R.drawable.orb_bg) //  rounded bg
         }
 
+        // Wave
+        wave = WaveView(this@IvoryOverlayService).apply {
+            isVisible = false
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
+        }
+        orbWrapper!!.addView(wave)
+
+        // Gradient border
+        val border = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(orbSize, orbSize)
+            background = ContextCompat.getDrawable(this@IvoryOverlayService, R.drawable.gradient_border_light)
+            clipToOutline = true
+        }
+        orbWrapper!!.addView(border)
+
+        // Star (on top)
+        val star = ImageView(this).apply {
+            setImageResource(R.drawable.ivorystar)
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
+                gravity = Gravity.CENTER
+            }
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }
+        orbWrapper!!.addView(star)
+        orb = star
+
+        // Window params
         orbParams = WindowManager.LayoutParams(
             orbSize, orbSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -124,16 +154,10 @@ class IvoryOverlayService : Service() {
             y = screenH / 2
         }
 
-        val orbWrapper = FrameLayout(this).apply {
-            addView(orb, FrameLayout.LayoutParams(orbSize, orbSize))
-            // Wave view sits on top of the star
-            wave = WaveView(this@IvoryOverlayService).apply {
-                isVisible = false
-                addView(this, FrameLayout.LayoutParams(orbSize * 2, orbSize * 2).apply {
-                    gravity = Gravity.CENTER
-                })
-            }
-        }
+        wm!!.addView(orbWrapper, orbParams)
+
+        // Touch on wrapper
+        orbWrapper!!.setOnTouchListener { v, ev -> ... }
 
         // ----- INPUT CARD  -----
         val inflater = LayoutInflater.from(this)
@@ -146,7 +170,7 @@ class IvoryOverlayService : Service() {
         root.addView(inputCard)
 
         // ----- Add everything to WindowManager -----
-        orbContainer = FrameLayout(this).apply { addView(orbWrapper) }
+        // Root covers full screen (for inputCard + removeZone)
         wm!!.addView(root, WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -155,10 +179,12 @@ class IvoryOverlayService : Service() {
                     or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ))
-        wm!!.addView(orbContainer, orbParams)
 
-        // ----- Touch handling -----
-        orbWrapper.setOnTouchListener { v, ev ->
+        // Orb is added ONCE — directly
+        wm!!.addView(orbWrapper, orbParams)
+
+        // ----- Touch handling (on orbWrapper) -----
+        orbWrapper!!.setOnTouchListener { v, ev ->
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
                     isDragging = false
@@ -175,9 +201,11 @@ class IvoryOverlayService : Service() {
                     val dy = (ev.rawY - initialTouchY).toInt()
                     orbParams.x = initialX + dx
                     orbParams.y = initialY + dy
-                    wm!!.updateViewLayout(orbContainer, orbParams)
 
-                    // show/hide remove zone
+                    // Update the orbWrapper directly
+                    wm!!.updateViewLayout(orbWrapper, orbParams)
+
+                    // Show/hide remove zone
                     val bottomThreshold = screenH - dp(120)
                     removeZone?.isVisible = orbParams.y > bottomThreshold
                     isDragging = true
@@ -185,15 +213,12 @@ class IvoryOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (isDragging) {
-                        // dropped on remove zone?
                         if (removeZone?.isVisible == true) {
                             stopSelf()
                             return@setOnTouchListener true
                         }
-                        // snap to edge
                         snapOrbToEdge()
                     } else {
-                        // TAP → open UI
                         onOrbTap()
                     }
                     scheduleIdleShrink()
@@ -205,17 +230,17 @@ class IvoryOverlayService : Service() {
     }
 
     private fun onOrbTap() {
-        // 1. start wave animation
+        // Show wave *inside* the orb
         wave?.isVisible = true
         wave?.startAnimation()
 
-        // 2. animate input card out of the orb
+        // Animate input card out from orb center
         inputCard?.isVisible = true
         inputCard?.alpha = 0f
         inputCard?.scaleX = 0.3f
         inputCard?.scaleY = 0.3f
-        inputCard?.translationX = (orbParams.x + dp(28) - screenW / 2).toFloat()
-        inputCard?.translationY = (orbParams.y + dp(28) - dp(80)).toFloat()
+        inputCard?.translationX = (orbParams.x + orbSize / 2f - screenW / 2).toFloat()
+        inputCard?.translationY = (orbParams.y + orbSize / 2f - dp(80)).toFloat()
 
         inputCard?.animate()
             ?.alpha(1f)
@@ -225,33 +250,43 @@ class IvoryOverlayService : Service() {
             ?.translationY(0f)
             ?.setDuration(350)
             ?.setInterpolator(DecelerateInterpolator())
-            ?.withEndAction {
-                // hand over to your existing AssistOverlayActivity logic
-                // (you can keep the same views, just make them visible)
-                // For brevity we just keep the card visible.
-            }?.start()
+            ?.start()
     }
 
     private fun snapOrbToEdge() {
         val targetX = if (orbParams.x > screenW / 2) screenW - dp(72) else dp(16)
-        val animX = ObjectAnimator.ofInt(orbParams.x, targetX).apply {
+
+        val xHolder = PropertyValuesHolder.ofInt("x", orbParams.x, targetX)
+
+        val animX = ObjectAnimator.ofPropertyValuesHolder(orbParams, xHolder).apply {
             duration = 250
+            interpolator = DecelerateInterpolator()
             addUpdateListener {
-                orbParams.x = it.animatedValue as Int
-                wm!!.updateViewLayout(orbContainer, orbParams)
+                orbParams.x = it.getAnimatedValue("x") as Int
+                wm!!.updateViewLayout(orbWrapper, orbParams)
             }
         }
         animX.start()
     }
 
     private fun expandOrb() {
-        orb?.animate()?.scaleX(1.2f)?.scaleY(1.2f)?.alpha(1f)?.setDuration(200)?.start()
+        orbWrapper?.animate()
+            ?.scaleX(1.2f)
+            ?.scaleY(1.2f)
+            ?.alpha(1f)
+            ?.setDuration(200)
+            ?.start()
         wave?.isVisible = false
         scheduleIdleShrink()
     }
 
     private fun shrinkOrb() {
-        orb?.animate()?.scaleX(0.8f)?.scaleY(0.8f)?.alpha(0.6f)?.setDuration(300)?.start()
+        orbWrapper?.animate()
+            ?.scaleX(0.8f)
+            ?.scaleY(0.8f)
+            ?.alpha(0.6f)
+            ?.setDuration(300)
+            ?.start()
     }
 
     private fun scheduleIdleShrink() {
@@ -272,8 +307,8 @@ class IvoryOverlayService : Service() {
     override fun onDestroy() {
         idleHandler.removeCallbacksAndMessages(null)
         wm?.let {
-            orbContainer?.let { v -> it.removeView(v) }
-            // root view is removed automatically when service stops
+            orbWrapper?.let { v -> it.removeView(v) }
+            // root is removed automatically
         }
         super.onDestroy()
     }
