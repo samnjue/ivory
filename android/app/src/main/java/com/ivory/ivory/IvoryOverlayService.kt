@@ -133,22 +133,8 @@ class IvoryOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-
-        if (wm == null) {
-            Log.e("IvoryOverlay", "WindowManager is null, cannot create overlay")
-            stopSelf()
-            return
-        }
         
-        if (screenW == 0 || screenH == 0) {
-            Log.e("IvoryOverlay", "Invalid screen dimensions: ${screenW}x${screenH}")
-            stopSelf()
-            return
-        }
-            
-        Log.d("IvoryOverlay", "Service onCreate() called")
-
-        // Create notification for foreground service
+        // Call startForeground() FIRST, before anything else
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "ivory_overlay_channel"
             val channelName = "Ivory Assistant Overlay"
@@ -163,11 +149,19 @@ class IvoryOverlayService : Service() {
             
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager?.createNotificationChannel(channel)
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("Ivory Assistant")
                 .setContentText("Floating button is active")
-                .setSmallIcon(android.R.drawable.ic_dialog_info) // Use system icon as fallback
+                .setSmallIcon(android.R.drawable.ivorystar)
+                .setContentIntent(pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
                 .build()
@@ -175,9 +169,10 @@ class IvoryOverlayService : Service() {
             startForeground(1, notification)
         }
         
+        // Now do initialization
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         
-        // FIXED: Get display size from WindowManager instead of display
+        // Get screen dimensions
         val size = Point()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val windowMetrics = wm!!.currentWindowMetrics
@@ -193,6 +188,20 @@ class IvoryOverlayService : Service() {
             screenH = size.y
             Log.d("IvoryOverlay", "Screen size (legacy): ${screenW}x${screenH}")
         }
+        
+        if (wm == null) {
+            Log.e("IvoryOverlay", "WindowManager is null, cannot create overlay")
+            stopSelf()
+            return
+        }
+        
+        if (screenW == 0 || screenH == 0) {
+            Log.e("IvoryOverlay", "Invalid screen dimensions: ${screenW}x${screenH}")
+            stopSelf()
+            return
+        }
+        
+        Log.d("IvoryOverlay", "Service onCreate() called")
 
         try {
             createOverlay()

@@ -115,7 +115,7 @@
             </intent-filter>
         </service>
         
-        <!-- Floating Orb Service - FIXED PATH -->
+        <!-- Floating Orb Service -->
         <service
             android:name=".IvoryOverlayService"
             android:enabled="true"
