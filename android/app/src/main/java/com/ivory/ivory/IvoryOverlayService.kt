@@ -22,6 +22,9 @@ import com.ivory.ivory.R
 import com.ivory.ivory.WaveView
 import android.app.Notification
 import android.content.res.Configuration
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
 
 class IvoryOverlayService : Service() {
 
@@ -130,6 +133,33 @@ class IvoryOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "ivory_overlay_channel"
+            val channelName = "Ivory Assistant Overlay"
+            val channel = NotificationChannel(
+                channelId,
+                channelName,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Floating assistant button"
+                setShowBadge(false)
+            }
+            
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager?.createNotificationChannel(channel)
+            
+            val notification = NotificationCompat.Builder(this, channelId)
+                .setContentTitle("Ivory Assistant")
+                .setContentText("Floating button is active")
+                .setSmallIcon(R.drawable.ivorystar)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build()
+            
+            startForeground(1, notification)
+        }
+        
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
 
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else wm!!.defaultDisplay
@@ -139,7 +169,6 @@ class IvoryOverlayService : Service() {
         screenH = size.y
 
         createOverlay()
-        startForeground(1, Notification())
     }
 
     // ------------------------------------------------------------------------

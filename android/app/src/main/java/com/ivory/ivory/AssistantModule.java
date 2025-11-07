@@ -191,23 +191,44 @@ public class AssistantModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void startFloatingOrb(Promise promise) {
         try {
+            Log.d(TAG, "startFloatingOrb called");
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!Settings.canDrawOverlays(reactContext)) {
+                    Log.e(TAG, "Overlay permission not granted!");
+                    promise.reject("NO_PERMISSION", "Overlay permission not granted");
+                    return;
+                }
+            }
+            
             Context ctx = getReactApplicationContext();
-            IvoryOverlayService.start(ctx);              
+            Log.d(TAG, "Starting IvoryOverlayService...");
+            IvoryOverlayService.start(ctx);
+
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                boolean running = isServiceRunning();
+                Log.d(TAG, "Service running after start: " + running);
+            }, 500);
+            
             promise.resolve(true);
         } catch (Exception e) {
+            Log.e(TAG, "Error starting orb: " + e.getMessage(), e);
             promise.reject("START_ORB_ERROR", e.getMessage());
         }
     }
 
-    @ReactMethod
-    public void stopFloatingOrb(Promise promise) {
-        try {
-            Context ctx = getReactApplicationContext();
-            IvoryOverlayService.stop(ctx);                
-            promise.resolve(true);
-        } catch (Exception e) {
-            promise.reject("STOP_ORB_ERROR", e.getMessage());
+    private boolean isServiceRunning() {
+        android.app.ActivityManager am = (android.app.ActivityManager) 
+            reactContext.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am != null) {
+            for (android.app.ActivityManager.RunningServiceInfo rsi : 
+                    am.getRunningServices(Integer.MAX_VALUE)) {
+                if (IvoryOverlayService.class.getName().equals(rsi.service.getClassName())) {
+                    return true;
+                }
+            }
         }
+        return false;
     }
 
     @ReactMethod

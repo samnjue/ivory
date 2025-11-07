@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <queries>
         <intent>
@@ -45,7 +46,6 @@
             android:exported="false"
             android:noHistory="true"
             android:windowSoftInputMode="adjustResize|stateVisible"/>
-
 
         <!-- Main app activity -->
         <activity
@@ -114,12 +114,17 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
-        <!-- Orb Service -->
+        
+        <!-- Floating Orb Service - FIXED PATH -->
         <service
-            android:name=".overlay.IvoryOverlayService"
+            android:name=".IvoryOverlayService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_assistant" />
+        </service>
 
         <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
