@@ -3,7 +3,7 @@
     android:id="@+id/orb_root"
     android:layout_width="56dp"
     android:layout_height="56dp"
-    android:clipChildren="true"
+    android:clipChildren="false"
     android:clipToPadding="false">
 
     <View
@@ -11,15 +11,15 @@
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:background="@drawable/orb_background"
-        android:elevation="8dp" />
+        android:elevation="0dp"
+        android:translationZ="0dp" />
 
     <ImageView
         android:id="@+id/orb_star"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:layout_gravity="center"
         android:src="@drawable/ivorystar"
-        android:scaleType="centerInside"
-        android:tint="@android:color/white" />
+        android:scaleType="centerInside" />
 
 </FrameLayout>

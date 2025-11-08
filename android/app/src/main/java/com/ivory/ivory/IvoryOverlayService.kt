@@ -22,6 +22,14 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import android.animation.PropertyValuesHolder
+import android.animation.SpringAnimation
+import android.animation.SpringForce
+import android.view.View.DragShadowBuilder
+import android.animation.DynamicAnimation
+import android.animation.SpringAnimation
+import android.animation.SpringForce
+import android.graphics.ColorStateList
 import kotlin.math.abs
 
 class IvoryOverlayService : Service() {
@@ -417,11 +425,11 @@ class IvoryOverlayService : Service() {
     }
 
     private fun setOrbRed() {
-        orbBackground?.background = ContextCompat.getDrawable(this, R.drawable.orb_background_red)
+        orbBackground?.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#88FF3B30")))
     }
 
     private fun resetOrbColor() {
-        orbBackground?.background = ContextCompat.getDrawable(this, R.drawable.orb_background)
+        orbBackground?.backgroundTintList = null
     }
 
     private fun setPillRed() {
@@ -448,29 +456,53 @@ class IvoryOverlayService : Service() {
         val topDist = orbY
         val bottomDist = screenHeight - (orbY + dpToPx(ORB_SIZE))
 
-        val minHorizontal = Math.min(leftDist, rightDist)
-        val minVertical = Math.min(topDist, bottomDist)
+        val snapX: Int
+        val snapY: Int
 
-        if (minHorizontal < minVertical && minHorizontal < SNAP_THRESHOLD) {
-            val targetX = if (leftDist < rightDist) dpToPx(16) else screenWidth - dpToPx(ORB_SIZE) - dpToPx(16)
-            animateSnap(targetX, orbY)
-        } else if (minVertical < SNAP_THRESHOLD) {
-            val targetY = if (topDist < bottomDist) dpToPx(50) else screenHeight - dpToPx(ORB_SIZE) - dpToPx(50)
-            animateSnap(orbX, targetY)
+        if (leftDist < rightDist && leftDist < SNAP_THRESHOLD) {
+            snapX = dpToPx(16)
+            snapY = orbY.coerceIn(dpToPx(50), screenHeight - dpToPx(ORB_SIZE) - dpToPx(50))
+        } else if (rightDist < SNAP_THRESHOLD) {
+            snapX = screenWidth - dpToPx(ORB_SIZE) - dpToPx(16)
+            snapY = orbY.coerceIn(dpToPx(50), screenHeight - dpToPx(ORB_SIZE) - dpToPx(50))
+        } else if (topDist < bottomDist && topDist < SNAP_THRESHOLD) {
+            snapX = orbX.coerceIn(dpToPx(16), screenWidth - dpToPx(ORB_SIZE) - dpToPx(16))
+            snapY = dpToPx(50)
+        } else if (bottomDist < SNAP_THRESHOLD) {
+            snapX = orbX.coerceIn(dpToPx(16), screenWidth - dpToPx(ORB_SIZE) - dpToPx(16))
+            snapY = screenHeight - dpToPx(ORB_SIZE) - dpToPx(50)
         } else {
-            val targetX = if (leftDist < rightDist) dpToPx(16) else screenWidth - dpToPx(ORB_SIZE) - dpToPx(16)
-            val targetY = if (topDist < bottomDist) dpToPx(50) else screenHeight - dpToPx(ORB_SIZE) - dpToPx(50)
-            animateSnap(targetX, targetY)
+            snapX = if (leftDist < rightDist) dpToPx(16) else screenWidth - dpToPx(ORB_SIZE) - dpToPx(16)
+            snapY = if (topDist < bottomDist) dpToPx(50) else screenHeight - dpToPx(ORB_SIZE) - dpToPx(50)
         }
+
+        springTo(snapX, snapY)
     }
 
-    private fun animateSnap(targetX: Int, targetY: Int) {
-        ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 300
-            addUpdateListener {
-                val progress = it.animatedValue as Float
-                orbParams.x = (initialX + (targetX - initialX) * progress).toInt()
-                orbParams.y = (initialY + (targetY - initialY) * progress).toInt()
+    private fun springTo(targetX: Int, targetY: Int) {
+        val view = orbRoot ?: return
+
+        // X spring
+        SpringAnimation(view, DynamicAnimation.X, targetX.toFloat()).apply {
+            spring = SpringForce(targetX.toFloat()).apply {
+                stiffness = SpringForce.STIFFNESS_MEDIUM
+                dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
+            }
+            addUpdateListener { _, value, _ ->
+                orbParams.x = value.toInt()
+                windowManager.updateViewLayout(orbRoot, orbParams)
+            }
+            start()
+        }
+
+        // Y spring
+        SpringAnimation(view, DynamicAnimation.Y, targetY.toFloat()).apply {
+            spring = SpringForce(targetY.toFloat()).apply {
+                stiffness = SpringForce.STIFFNESS_MEDIUM
+                dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
+            }
+            addUpdateListener { _, value, _ ->
+                orbParams.y = value.toInt()
                 windowManager.updateViewLayout(orbRoot, orbParams)
             }
             start()
