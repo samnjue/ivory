@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
+
+    <!-- Background shadow -->
     <solid android:color="#1A000000" />
+
+    <!-- Gradient stroke -->
     <stroke
         android:width="3dp"
-        android:color="@drawable/gradient_red_blue" />
+        android:color="@color/gradient_red_blue_stroke" />
+
 </shape>
