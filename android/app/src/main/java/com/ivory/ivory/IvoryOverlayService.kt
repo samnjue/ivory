@@ -101,11 +101,41 @@ class IvoryOverlayService : Service() {
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
 
+    private val NOTIFICATION_ID = 1
+
+    private val NOTIFICATION_ID = 1
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val notification = NotificationCompat.Builder(this, "overlay_channel")
+            .setContentTitle("Ivory Assistant")
+            .setContentText("Floating orb active")
+            .setSmallIcon(R.drawable.ivorystar)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+
+        startForeground(NOTIFICATION_ID, notification)
+        return START_STICKY
+    }
+
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createOrb()
         createOverlay()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "overlay_channel",
+                "Overlay Service",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -145,8 +175,7 @@ class IvoryOverlayService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE
             format = PixelFormat.TRANSLUCENT
-            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
             gravity = Gravity.TOP or Gravity.START
             width = WindowManager.LayoutParams.MATCH_PARENT
