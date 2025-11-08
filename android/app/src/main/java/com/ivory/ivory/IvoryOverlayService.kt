@@ -365,27 +365,27 @@ class IvoryOverlayService : Service() {
     }
 
     private fun addCloseButtons() {
-        listOf(
-            Triple(originalInputCard, originalCloseButton) { hideInputCard() },
-            Triple(thinkingCard, thinkingCloseButton) { hideInputCard() },
-            Triple(responseCard, responseCloseButton) { hideInputCard() }
-        ).forEach { (parent, _, action) ->
-            val btn = ImageView(this).apply {
-                layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
-                    gravity = Gravity.TOP or Gravity.END
-                    setMargins(0, dp(8), dp(8), 0)
+        val cards = listOf(
+            originalInputCard to { originalCloseButton = it },
+            thinkingCard to { thinkingCloseButton = it },
+            responseCard to { responseCloseButton = it }
+        )
+
+        cards.forEach { (parent, assignBtn) ->
+            if (parent != null) {
+                val btn = ImageView(this).apply {
+                    layoutParams = FrameLayout.LayoutParams(dp(32), dp(32)).apply {
+                        gravity = Gravity.TOP or Gravity.END
+                        setMargins(0, dp(8), dp(8), 0)
+                    }
+                    setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                    setColorFilter(Color.parseColor("#666666"))
+                    background = createCircleBackground(Color.parseColor("#22000000"))
+                    setPadding(dp(6), dp(6), dp(6), dp(6))
+                    setOnClickListener { hideInputCard() }
                 }
-                setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                setColorFilter(Color.parseColor("#666666"))
-                background = createCircleBackground(Color.parseColor("#22000000"))
-                setPadding(dp(6), dp(6), dp(6), dp(6))
-                setOnClickListener { action() }
-            }
-            parent?.addView(btn)
-            when (parent) {
-                originalInputCard -> originalCloseButton = btn
-                thinkingCard -> thinkingCloseButton = btn
-                responseCard -> responseCloseButton = btn
+                parent.addView(btn)
+                assignBtn(btn)
             }
         }
     }
@@ -436,14 +436,14 @@ class IvoryOverlayService : Service() {
             if (hasFocus) showKeyboard(miniInputField)
         }
 
-        inputField?.addTextChangedListener(watcher { voiceContainer, sendButton })
-        miniInputField?.addTextChangedListener(watcher { miniVoiceContainer, miniSendButton })
+        inputField?.addTextChangedListener(watcher { voiceContainer to sendButton })
+        miniInputField?.addTextChangedListener(watcher { miniVoiceContainer to miniSendButton })
     }
 
-    private fun watcher(views: () -> Pair<View?, ImageButton?>): TextWatcher = object : TextWatcher {
+    private fun watcher(getViews: () -> Pair<View?, ImageButton?>): TextWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-            val (voice, send) = views()
+            val (voice, send) = getViews()
             val hasText = !s.isNullOrEmpty()
             voice?.visibility = if (hasText) View.GONE else View.VISIBLE
             send?.visibility = if (hasText) View.VISIBLE else View.GONE
