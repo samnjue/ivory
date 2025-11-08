@@ -366,9 +366,9 @@ class IvoryOverlayService : Service() {
 
     private fun addCloseButtons() {
         val cards = listOf(
-            originalInputCard to { originalCloseButton = it },
-            thinkingCard to { thinkingCloseButton = it },
-            responseCard to { responseCloseButton = it }
+            originalInputCard to { btn: ImageView -> originalCloseButton = btn },
+            thinkingCard to { btn: ImageView -> thinkingCloseButton = btn },
+            responseCard to { btn: ImageView -> responseCloseButton = btn }
         )
 
         cards.forEach { (parent, assignBtn) ->
