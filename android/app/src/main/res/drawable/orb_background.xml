@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Background shadow -->
-    <solid android:color="#1A000000" />
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#1A000000" />
+            <size android:width="56dp" android:height="56dp" />
+        </shape>
+    </item>
 
-    <!-- Gradient stroke -->
-    <stroke
-        android:width="3dp"
-        android:color="@color/gradient_red_blue_stroke" />
+    <item
+        android:width="56dp"
+        android:height="56dp">
+        <shape android:shape="oval">
+            <stroke
+                android:width="3dp"
+                android:color="@drawable/gradient_red_blue" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
 
-</shape>
+</layer-list>
