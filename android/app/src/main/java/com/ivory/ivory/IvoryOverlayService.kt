@@ -19,8 +19,6 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
-import androidx.core.view.*  
-import androidx.core.content.res.ColorStateListKt
 import kotlin.math.abs
 
 class IvoryOverlayService : Service() {
