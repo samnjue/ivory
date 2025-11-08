@@ -17,6 +17,9 @@ import android.util.Log
 import android.view.*
 import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
+import androidx.core.app.NotificationCompat
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.widget.*
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
@@ -101,11 +104,11 @@ class IvoryOverlayService : Service() {
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
 
-    private val NOTIFICATION_ID = 1
-
-    private val NOTIFICATION_ID = 1
+    private val NOTIFICATION_ID = 1  
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        createNotificationChannel()
+
         val notification = NotificationCompat.Builder(this, "overlay_channel")
             .setContentTitle("Ivory Assistant")
             .setContentText("Floating orb active")
@@ -133,7 +136,7 @@ class IvoryOverlayService : Service() {
                 "Overlay Service",
                 NotificationManager.IMPORTANCE_LOW
             )
-            val manager = getSystemService(NotificationManager::class.java)
+            val manager = getSystemService(NotificationManager::class.java) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
