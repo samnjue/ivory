@@ -19,8 +19,8 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
-import androidx.core.view.*
-import androidx.core.graphics.drawable.DrawableCompat   
+import androidx.core.view.*  
+import androidx.core.content.res.ColorStateListKt
 import kotlin.math.abs
 
 class IvoryOverlayService : Service() {
@@ -523,10 +523,12 @@ class IvoryOverlayService : Service() {
         thinkingText?.setTextColor(textColor)
         aiResponseText?.setTextColor(textColor)
 
-        // === FIXED: Use ContextCompat + ColorStateList from AndroidX ===
-        val tintList = ContextCompat.getColorStateList(this, 
+        val tintList = ContextCompat.getColorStateList(this,
             if (isDark) R.color.icon_tint_dark else R.color.icon_tint_light
-        ) ?: ColorStateList.valueOf(iconTintColor)
+        ) ?: run {
+            val fallbackColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
+            android.content.res.ColorStateList.valueOf(fallbackColor)
+        }
 
         paperclipButton?.imageTintList = tintList
         sendButton?.imageTintList = tintList
