@@ -164,7 +164,7 @@ class MainActivity : ReactActivity() {
                 )
                 startActivityForResult(intent, 1234)
             } else {
-                IvoryOverlayService.start(this)
+                IvoryOverlayService.start(this)   
             }
         } else {
             IvoryOverlayService.start(this)
@@ -176,7 +176,7 @@ class MainActivity : ReactActivity() {
         if (requestCode == 1234) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (Settings.canDrawOverlays(this)) {
-                    IvoryOverlayService.start(this)
+                    IvoryOverlayService.start(this) 
                 } else {
                     Toast.makeText(this, "Overlay permission required", Toast.LENGTH_SHORT).show()
                 }

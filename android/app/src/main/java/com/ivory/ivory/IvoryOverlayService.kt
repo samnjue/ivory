@@ -20,9 +20,23 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.core.view.*
+import androidx.core.graphics.drawable.DrawableCompat   
+import android.graphics.drawable.ColorStateList
 import kotlin.math.abs
 
 class IvoryOverlayService : Service() {
+
+    companion object {
+        // Helper to start the service from any context (MainActivity, BootReceiver …)
+        fun start(context: Context) {
+            val intent = Intent(context, IvoryOverlayService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+    }
 
     private val TAG = "IvoryOverlayService"
 
@@ -501,6 +515,7 @@ class IvoryOverlayService : Service() {
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
         val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
 
+        // Text colors
         inputField?.setTextColor(textColor)
         inputField?.setHintTextColor(hintColor)
         miniInputField?.setTextColor(textColor)
@@ -508,13 +523,16 @@ class IvoryOverlayService : Service() {
         thinkingText?.setTextColor(textColor)
         aiResponseText?.setTextColor(textColor)
 
-        paperclipButton?.imageTintList = ColorStateList.valueOf(iconTint)
-        sendButton?.imageTintList = ColorStateList.valueOf(iconTint)
-        micIcon?.imageTintList = ColorStateList.valueOf(iconTint)
-        miniPaperclipButton?.imageTintList = ColorStateList.valueOf(iconTint)
-        miniSendButton?.imageTintList = ColorStateList.valueOf(iconTint)
-        miniMicIcon?.imageTintList = ColorStateList.valueOf(iconTint)
+        // Icon tints – using the imported ColorStateList
+        val tintList = ColorStateList.valueOf(iconTint)
+        paperclipButton?.imageTintList = tintList
+        sendButton?.imageTintList = tintList
+        micIcon?.imageTintList = tintList
+        miniPaperclipButton?.imageTintList = tintList
+        miniSendButton?.imageTintList = tintList
+        miniMicIcon?.imageTintList = tintList
 
+        // Backgrounds
         val bg = ContextCompat.getDrawable(
             this,
             if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
@@ -533,7 +551,7 @@ class IvoryOverlayService : Service() {
 
         applyGradientToTitle()
     }
-
+    
     private fun applyGradientToTitle() {
         aiResponseTitle?.post {
             val width = aiResponseTitle?.width?.toFloat() ?: return@post
