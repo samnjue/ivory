@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/orb_root"
     android:layout_width="56dp"
     android:layout_height="56dp"
-    android:background="@drawable/orb_background"
-    android:elevation="8dp"
-    android:outlineProvider="bounds"
-    android:clipToOutline="true">
+    android:clipChildren="true"
+    android:clipToPadding="false">
+
+    <View
+        android:id="@+id/orb_background"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/orb_background"
+        android:elevation="8dp" />
 
     <ImageView
+        android:id="@+id/orb_star"
         android:layout_width="28dp"
         android:layout_height="28dp"
         android:layout_gravity="center"
         android:src="@drawable/ivorystar"
-        android:scaleType="centerInside" />
+        android:scaleType="centerInside"
+        android:tint="@android:color/white" />
 
 </FrameLayout>
