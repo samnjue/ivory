@@ -21,7 +21,6 @@ import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.core.view.*
 import androidx.core.graphics.drawable.DrawableCompat   
-import android.graphics.drawable.ColorStateList
 import kotlin.math.abs
 
 class IvoryOverlayService : Service() {
@@ -511,9 +510,10 @@ class IvoryOverlayService : Service() {
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
+
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
-        val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
+        val iconTintColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
 
         // Text colors
         inputField?.setTextColor(textColor)
@@ -523,8 +523,11 @@ class IvoryOverlayService : Service() {
         thinkingText?.setTextColor(textColor)
         aiResponseText?.setTextColor(textColor)
 
-        // Icon tints – using the imported ColorStateList
-        val tintList = ColorStateList.valueOf(iconTint)
+        // === FIXED: Use ContextCompat + ColorStateList from AndroidX ===
+        val tintList = ContextCompat.getColorStateList(this, 
+            if (isDark) R.color.icon_tint_dark else R.color.icon_tint_light
+        ) ?: ColorStateList.valueOf(iconTintColor)
+
         paperclipButton?.imageTintList = tintList
         sendButton?.imageTintList = tintList
         micIcon?.imageTintList = tintList
@@ -533,25 +536,21 @@ class IvoryOverlayService : Service() {
         miniMicIcon?.imageTintList = tintList
 
         // Backgrounds
-        val bg = ContextCompat.getDrawable(
-            this,
-            if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
-        )
+        val bgRes = if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
+        val bg = ContextCompat.getDrawable(this, bgRes)
         originalInputCard?.background = bg
         thinkingCard?.background = bg
         responseCard?.background = bg
         miniInputCard?.background = bg
 
-        val gradientBorder = ContextCompat.getDrawable(
-            this,
-            if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
-        )
+        val borderRes = if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
+        val gradientBorder = ContextCompat.getDrawable(this, borderRes)
         voiceContainer?.background = gradientBorder
         miniVoiceContainer?.background = gradientBorder
 
         applyGradientToTitle()
     }
-    
+
     private fun applyGradientToTitle() {
         aiResponseTitle?.post {
             val width = aiResponseTitle?.width?.toFloat() ?: return@post
