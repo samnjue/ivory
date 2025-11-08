@@ -4,7 +4,8 @@
     android:layout_height="56dp"
     android:background="@drawable/orb_background"
     android:elevation="8dp"
-    android:outlineProvider="oval">
+    android:outlineProvider="bounds"
+    android:clipToOutline="true">
 
     <ImageView
         android:layout_width="28dp"
