@@ -23,7 +23,6 @@ import android.widget.*
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
-import kotlin.math.minOf
 
 class IvoryOverlayService : Service() {
 
@@ -449,8 +448,8 @@ class IvoryOverlayService : Service() {
         val topDist = orbY
         val bottomDist = screenHeight - (orbY + dpToPx(ORB_SIZE))
 
-        val minHorizontal = minOf(leftDist, rightDist)
-        val minVertical = minOf(topDist, bottomDist)
+        val minHorizontal = Math.min(leftDist, rightDist)
+        val minVertical = Math.min(topDist, bottomDist)
 
         if (minHorizontal < minVertical && minHorizontal < SNAP_THRESHOLD) {
             val targetX = if (leftDist < rightDist) dpToPx(16) else screenWidth - dpToPx(ORB_SIZE) - dpToPx(16)
