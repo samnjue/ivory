@@ -24,7 +24,7 @@ import kotlin.math.abs
 class IvoryOverlayService : Service() {
 
     companion object {
-        // Helper to start the service from any context (MainActivity, BootReceiver …)
+        @JvmStatic
         fun start(context: Context) {
             val intent = Intent(context, IvoryOverlayService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -32,6 +32,12 @@ class IvoryOverlayService : Service() {
             } else {
                 context.startService(intent)
             }
+        }
+
+        @JvmStatic
+        fun stop(context: Context) {
+            val intent = Intent(context, IvoryOverlayService::class.java)
+            context.stopService(intent)
         }
     }
 
