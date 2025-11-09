@@ -10,14 +10,14 @@
         android:id="@+id/orb_gradient"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/orb_gradient"
+        android:src="@drawable/orb_background"
         android:scaleType="fitXY"/>
 
     <ImageView
         android:id="@+id/orb_tint_ring"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/orb_ring"
+        android:src="@drawable/orb_tint_ring"
         android:alpha="0"/>
 
     <FrameLayout
