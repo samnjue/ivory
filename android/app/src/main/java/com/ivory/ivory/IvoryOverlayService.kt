@@ -18,6 +18,8 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.graphics.Paint
+import android.view.ViewGroup
 import android.view.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
@@ -178,8 +180,8 @@ class IvoryOverlayService : Service() {
             setOnTouchListener(OrbTouchListener())
             setOnClickListener { toggleOverlay() }
             clipToOutline = false
-            clipChildren = false
-            clipToPadding = false
+            (this as? ViewGroup)?.clipChildren = false
+            (this as? ViewGroup)?.clipToPadding = false
         }
      
         orbParams = WindowManager.LayoutParams().apply {
@@ -1020,7 +1022,7 @@ class IvoryOverlayService : Service() {
         uiHandler.removeCallbacksAndMessages(null)
         thinkingIvoryStar?.clearAnimation()
     }
-    
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         applyTheme()
