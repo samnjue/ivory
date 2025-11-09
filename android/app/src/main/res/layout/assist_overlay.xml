@@ -8,7 +8,7 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- MAIN OVERLAY CONTAINER -->
+    <!-- Main Overlay Container -->
     <FrameLayout
         android:id="@+id/overlayContainer"
         android:layout_width="match_parent"
@@ -18,7 +18,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp">
 
-        <!-- UNIFIED RESPONSE CARD (AI Response + Mini Input) -->
+        <!-- Unified Response Card -->
         <FrameLayout
             android:id="@+id/responseCard"
             android:layout_width="match_parent"
@@ -32,7 +32,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- RESPONSE SCROLL CONTAINER -->
+                <!-- Response Scroll Container -->
                 <ScrollView
                     android:id="@+id/responseScrollView"
                     android:layout_width="match_parent"
@@ -83,7 +83,7 @@
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- MINI INPUT BAR (inside the response card) -->
+                <!-- Mini Input Bar -->
                 <FrameLayout
                     android:id="@+id/miniInputContainer"
                     android:layout_width="match_parent"
@@ -91,7 +91,7 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
                     android:paddingBottom="10dp"
-                    android:paddingTop="6dp">
+                    android:paddingTop="0dp">
 
                     <FrameLayout
                         android:id="@+id/miniInputCard"
@@ -198,7 +198,7 @@
             </LinearLayout>
         </FrameLayout>
 
-        <!-- THINKING STATE -->
+        <!-- Thinking State -->
         <FrameLayout
             android:id="@+id/thinkingCard"
             android:layout_width="match_parent"
@@ -232,7 +232,7 @@
             </LinearLayout>
         </FrameLayout>
 
-        <!-- ORIGINAL FULL INPUT (initial state) -->
+        <!-- Original Full Input -->
         <FrameLayout
             android:id="@+id/originalInputCard"
             android:layout_width="match_parent"
@@ -275,7 +275,7 @@
                     android:fontFamily="@font/red_rose"
                     android:imeOptions="actionSend" />
 
-                <!-- MIC CONTAINER -->
+                <!-- Mic Container -->
                 <FrameLayout
                     android:id="@+id/micContainer"
                     android:layout_width="48dp"

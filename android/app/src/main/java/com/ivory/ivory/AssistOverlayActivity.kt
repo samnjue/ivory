@@ -30,7 +30,7 @@ class AssistOverlayActivity : Activity() {
     private var responseContent: LinearLayout? = null
     private var miniInputContainer: FrameLayout? = null
     private var miniInputCard: FrameLayout? = null
- 
+
     // Original input views
     private var inputField: EditText? = null
     private var paperclipButton: ImageButton? = null
@@ -39,16 +39,16 @@ class AssistOverlayActivity : Activity() {
     private var micBlurLayer: ImageView? = null
     private var voiceContainer: View? = null
     private var sendButton: ImageButton? = null
- 
+
     // Thinking views
     private var thinkingIvoryStar: ImageView? = null
     private var thinkingText: TextView? = null
- 
+
     // Response views
     private var aiResponseText: TextView? = null
     private var aiResponseTitle: TextView? = null
     private var aiResponseIcon: ImageView? = null
- 
+
     // Mini input views
     private var miniInputField: EditText? = null
     private var miniPaperclipButton: ImageButton? = null
@@ -65,19 +65,19 @@ class AssistOverlayActivity : Activity() {
     private var lastImeHeight = 0
     private val uiHandler = Handler(Looper.getMainLooper())
     private var thinkingDotsRunnable: Runnable? = null
-   
+  
     // Dummy response
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
-   
+  
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
-     
+    
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-     
+    
         setContentView(R.layout.assist_overlay)
 
         // Bind views
@@ -89,7 +89,7 @@ class AssistOverlayActivity : Activity() {
         responseContent = findViewById(R.id.responseContent)
         miniInputContainer = findViewById(R.id.miniInputContainer)
         miniInputCard = findViewById(R.id.miniInputCard)
-     
+    
         // Original input
         inputField = findViewById(R.id.inputField)
         paperclipButton = findViewById(R.id.paperclipButton)
@@ -98,16 +98,16 @@ class AssistOverlayActivity : Activity() {
         micBlurLayer = findViewById(R.id.micBlurLayer)
         voiceContainer = findViewById(R.id.voiceContainer)
         sendButton = findViewById(R.id.sendButton)
-     
+    
         // Thinking
         thinkingIvoryStar = findViewById(R.id.thinkingIvoryStar)
         thinkingText = findViewById(R.id.thinkingText)
-     
+    
         // Response
         aiResponseText = findViewById(R.id.aiResponseText)
         aiResponseTitle = findViewById(R.id.aiResponseTitle)
         aiResponseIcon = findViewById(R.id.aiResponseIcon)
-     
+    
         // Mini input
         miniInputField = findViewById(R.id.miniInputField)
         miniPaperclipButton = findViewById(R.id.miniPaperclipButton)
@@ -116,7 +116,7 @@ class AssistOverlayActivity : Activity() {
         miniMicBlurLayer = findViewById(R.id.miniMicBlurLayer)
         miniVoiceContainer = findViewById(R.id.miniVoiceContainer)
         miniSendButton = findViewById(R.id.miniSendButton)
-       
+      
         setupUi()
         setupImeInsetListener()
         applyTheme()
@@ -129,15 +129,15 @@ class AssistOverlayActivity : Activity() {
         originalInputCard?.setOnClickListener { /* no-op */ }
         responseCard?.setOnClickListener { /* no-op */ }
         miniInputCard?.setOnClickListener { /* no-op */ }
-       
+      
         // Original input setup
         paperclipButton?.setOnClickListener { Log.d(TAG, "Paperclip tapped") }
-     
+    
         voiceContainer?.setOnClickListener {
             openMainApp(null)
             finishWithoutAnimation()
         }
-     
+    
         sendButton?.setOnClickListener {
             val text = inputField?.text?.toString()?.trim() ?: ""
             if (text.isNotEmpty()) {
@@ -146,7 +146,7 @@ class AssistOverlayActivity : Activity() {
                 startThinkingPhase()
             }
         }
-     
+    
         micContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation(true)
@@ -155,14 +155,14 @@ class AssistOverlayActivity : Activity() {
                 stopListeningAnimation(true)
             }
         }
-     
+    
         inputField?.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(inputField, InputMethodManager.SHOW_IMPLICIT)
             }
         }
-     
+    
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -176,12 +176,12 @@ class AssistOverlayActivity : Activity() {
 
         // Mini input setup
         miniPaperclipButton?.setOnClickListener { Log.d(TAG, "Mini paperclip tapped") }
-     
+    
         miniVoiceContainer?.setOnClickListener {
             openMainApp(null)
             finishWithoutAnimation()
         }
-     
+    
         miniSendButton?.setOnClickListener {
             val text = miniInputField?.text?.toString()?.trim() ?: ""
             if (text.isNotEmpty()) {
@@ -190,7 +190,7 @@ class AssistOverlayActivity : Activity() {
                 startThinkingPhase()
             }
         }
-     
+    
         miniMicContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation(false)
@@ -199,14 +199,14 @@ class AssistOverlayActivity : Activity() {
                 stopListeningAnimation(false)
             }
         }
-     
+    
         miniInputField?.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(miniInputField, InputMethodManager.SHOW_IMPLICIT)
             }
         }
-     
+    
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -221,18 +221,18 @@ class AssistOverlayActivity : Activity() {
     private fun startThinkingPhase() {
         // Stop any existing animations
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
-     
+    
         // Fade out whatever is showing
         originalInputCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
             originalInputCard?.visibility = View.GONE
             originalInputCard?.alpha = 1f
         }?.start()
-     
+    
         responseCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
             responseCard?.visibility = View.GONE
             responseCard?.alpha = 1f
         }?.start()
-     
+    
         // Show thinking card
         uiHandler.postDelayed({
             thinkingCard?.visibility = View.VISIBLE
@@ -242,10 +242,10 @@ class AssistOverlayActivity : Activity() {
             thinkingCard?.invalidate()
             thinkingCard?.alpha = 0f
             thinkingCard?.animate()?.alpha(1f)?.setDuration(200)?.start()
-         
+        
             startSpinningAnimation()
             animateThinkingDots()
-         
+        
             // After 5 seconds, show response
             uiHandler.postDelayed({ showResponsePhase() }, 5000)
         }, 200)
@@ -255,12 +255,12 @@ class AssistOverlayActivity : Activity() {
         // Stop thinking animations
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
         thinkingIvoryStar?.clearAnimation()
-     
+    
         // Fade out thinking
         thinkingCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
             thinkingCard?.visibility = View.GONE
             thinkingCard?.alpha = 1f
-         
+        
             // Show response card
             responseCard?.visibility = View.VISIBLE
             applyTheme()
@@ -269,7 +269,7 @@ class AssistOverlayActivity : Activity() {
             responseCard?.invalidate()
             responseCard?.alpha = 0f
             responseCard?.animate()?.alpha(1f)?.setDuration(300)?.start()
-         
+        
             startTypewriterEffect()
         }?.start()
     }
@@ -278,12 +278,12 @@ class AssistOverlayActivity : Activity() {
         aiResponseText?.text = ""
         val words = dummyResponse.split(" ")
         var delay = 0L
-     
+    
         for (word in words) {
             uiHandler.postDelayed({
                 val cur = aiResponseText?.text?.toString() ?: ""
                 aiResponseText?.text = if (cur.isEmpty()) word else "$cur $word"
-             
+            
                 // Dynamically adjust scroll view height as content grows
                 responseScrollView?.post {
                     updateResponseCardHeight()
@@ -298,17 +298,17 @@ class AssistOverlayActivity : Activity() {
         val displayMetrics = resources.displayMetrics
         val screenHeight = displayMetrics.heightPixels
         val maxHeight = (screenHeight * 0.8).toInt()
-     
+    
         // Measure the actual content height
         responseContent?.measure(
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
-     
+    
         val contentHeight = (responseContent?.measuredHeight ?: 0) + (miniInputContainer?.height ?: 0)
-     
+    
         val targetHeight = contentHeight.coerceAtMost(maxHeight)
-     
+    
         val layoutParams = responseScrollView?.layoutParams
         layoutParams?.height = targetHeight
         responseScrollView?.layoutParams = layoutParams
@@ -357,7 +357,7 @@ class AssistOverlayActivity : Activity() {
             startAnimation(AnimationUtils.loadAnimation(this@AssistOverlayActivity, R.anim.mic_blur_pulse))
         }
     }
-    
+   
     private fun stopListeningAnimation(isOriginal: Boolean) {
         stopListeningHandler.removeCallbacksAndMessages(null)
         isListening = false
@@ -393,7 +393,7 @@ class AssistOverlayActivity : Activity() {
         val from = overlayContainer?.translationY ?: 0f
         val extraLift = (20 * resources.displayMetrics.density).toInt()
         val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
-     
+    
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
             addUpdateListener {
@@ -406,7 +406,7 @@ class AssistOverlayActivity : Activity() {
     private fun applyGradientToTitle() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
-     
+    
         // Apply gradient to title text
         aiResponseTitle?.post {
             val width = aiResponseTitle?.width?.toFloat() ?: 0f
@@ -420,7 +420,7 @@ class AssistOverlayActivity : Activity() {
                 aiResponseTitle?.paint?.shader = gradient
             }
         }
-     
+    
         // Apply gradient to icon (for Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             aiResponseIcon?.post {
@@ -452,7 +452,7 @@ class AssistOverlayActivity : Activity() {
         val textColor = if (isDark) Color.WHITE else Color.parseColor("#333333")
         val hintColor = if (isDark) Color.parseColor("#88FFFFFF") else Color.parseColor("#88333333")
         val iconTint = if (isDark) Color.WHITE else Color.parseColor("#333333")
-
+        
         // Text colors
         inputField?.setTextColor(textColor)
         inputField?.setHintTextColor(hintColor)
@@ -468,7 +468,7 @@ class AssistOverlayActivity : Activity() {
         miniPaperclipButton?.setColorFilter(iconTint)
         miniSendButton?.setColorFilter(iconTint)
         miniMicIcon?.setColorFilter(iconTint)
-        
+
         // Backgrounds
         val bg = ContextCompat.getDrawable(
             this,
@@ -477,7 +477,7 @@ class AssistOverlayActivity : Activity() {
         originalInputCard?.background = bg
         thinkingCard?.background = bg
         responseCard?.background = bg
-     
+    
         // Mini input background
         val miniBg = ContextCompat.getDrawable(
             this,
@@ -492,7 +492,7 @@ class AssistOverlayActivity : Activity() {
         )
         voiceContainer?.background = gradientBorder
         miniVoiceContainer?.background = gradientBorder
-     
+    
         // Re-apply gradient to title after theme change
         applyGradientToTitle()
     }
@@ -507,7 +507,7 @@ class AssistOverlayActivity : Activity() {
             originalInputCard?.requestLayout()
             originalInputCard?.invalidate()
         }
-     
+    
         // Mini Input Card
         miniInputCard?.post {
             (miniInputCard?.getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
@@ -557,7 +557,7 @@ class AssistOverlayActivity : Activity() {
         applyTheme()
         applyCardFixes()
     }
-  
+ 
     override fun onDestroy() {
         super.onDestroy()
         stopListeningHandler.removeCallbacksAndMessages(null)
