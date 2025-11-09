@@ -57,8 +57,8 @@
 
                             <ImageView
                                 android:id="@+id/aiResponseIcon"
-                                android:layout_width="18dp"
-                                android:layout_height="18dp"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
                                 android:src="@drawable/ic_sparkles"
                                 android:layout_marginEnd="6dp" />
 
@@ -141,6 +141,16 @@
                                 android:clickable="true"
                                 android:focusable="true"
                                 android:layout_gravity="center">
+
+                                <ImageView
+                                    android:id="@+id/miniMicBlurLayer"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:layout_gravity="center"
+                                    android:src="@drawable/ic_mic_gradient"
+                                    android:scaleType="center"
+                                    android:visibility="gone"
+                                    android:alpha="0.7" />
 
                                 <ImageView
                                     android:id="@+id/miniMicIcon"

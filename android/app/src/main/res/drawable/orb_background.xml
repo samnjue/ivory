@@ -17,7 +17,7 @@
         android:right="3dp"
         android:bottom="3dp">
         <shape android:shape="oval">
-            <solid android:color="#44000000" />
+            <solid android:color="rgba(68, 0, 0, 0.1)" />
         </shape>
     </item>
 
