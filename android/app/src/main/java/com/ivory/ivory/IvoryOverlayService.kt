@@ -97,8 +97,6 @@ class IvoryOverlayService : Service() {
     private var thinkingDotsRunnable: Runnable? = null
 
     // Drag state
-    private var currentX = 0
-    private var currentY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
@@ -109,6 +107,8 @@ class IvoryOverlayService : Service() {
     private val PILL_MARGIN = 80
     private val SNAP_THRESHOLD = 100
     private val INPUT_CARD_HEIGHT_DP = 56
+    private val VOICE_BUTTON_SIZE_DP = 38
+    private val MINI_INPUT_HEIGHT_DP = 48
 
     // Dummy response
     private val dummyResponse =
@@ -177,8 +177,6 @@ class IvoryOverlayService : Service() {
             x = dpToPx(16)
             y = windowManager.defaultDisplay.height / 2
         }
-        currentX = orbParams.x
-        currentY = orbParams.y
         windowManager.addView(orbRoot, orbParams)
     }
 
@@ -224,13 +222,7 @@ class IvoryOverlayService : Service() {
         bindOverlayViews()
         setupUi()
         applyTheme()
-
-        // Programmatically set original input card height
-        originalInputCard?.post {
-            val heightPx = dpToPx(INPUT_CARD_HEIGHT_DP)
-            originalInputCard?.layoutParams?.height = heightPx
-            originalInputCard?.requestLayout()
-        }
+        applyCardFixes()
     }
 
     // View binding
@@ -341,22 +333,36 @@ class IvoryOverlayService : Service() {
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - initialTouchX).toInt()
-                    val dy = (event.rawY - initialTouchY).toInt()
+                    val dx = event.rawX - initialTouchX
+                    val dy = event.rawY - initialTouchY
+
                     if (!isDragging && (abs(dx) > 10 || abs(dy) > 10)) {
                         isDragging = true
                     }
+
                     if (isDragging) {
-                        currentX = orbParams.x + dx
-                        currentY = orbParams.y + dy
-                        orbParams.x = currentX
-                        orbParams.y = currentY
+                        val newX = (orbParams.x + dx).toInt()
+                        val newY = (orbParams.y + dy).toInt()
+
+                        val screenW = resources.displayMetrics.widthPixels
+                        val screenH = resources.displayMetrics.heightPixels
+                        val orbW = dpToPx(ORB_SIZE)
+                        val orbH = dpToPx(ORB_SIZE)
+
+                        orbParams.x = newX.coerceIn(0, screenW - orbW)
+                        orbParams.y = newY.coerceIn(0, screenH - orbH)
+
                         windowManager.updateViewLayout(orbRoot, orbParams)
-                        updateRemovePillVisibility(currentY + dpToPx(ORB_SIZE))
+
+                        updateRemovePillVisibility(orbParams.y + orbH)
                         checkOverlapWithRemovePill()
                         if (overlayContainer?.visibility == View.VISIBLE) {
                             positionOverlayNextToOrb()
                         }
+
+                        // Reset for next move
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
                     }
                     return true
                 }
@@ -376,7 +382,7 @@ class IvoryOverlayService : Service() {
         }
     }
 
-    // Snap-to-edge – Preserve Y on L/R, X on T/B
+    // Snap-to-edge
     private fun snapToEdgeOrRemove() {
         val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
@@ -386,10 +392,10 @@ class IvoryOverlayService : Service() {
             return
         }
 
-        val leftDist = currentX
-        val rightDist = screenW - (currentX + dpToPx(ORB_SIZE))
-        val topDist = currentY
-        val bottomDist = screenH - (currentY + dpToPx(ORB_SIZE))
+        val leftDist = orbParams.x
+        val rightDist = screenW - (orbParams.x + dpToPx(ORB_SIZE))
+        val topDist = orbParams.y
+        val bottomDist = screenH - (orbParams.y + dpToPx(ORB_SIZE))
 
         val targetX: Int
         val targetY: Int
@@ -397,18 +403,18 @@ class IvoryOverlayService : Service() {
         when {
             leftDist < SNAP_THRESHOLD -> {
                 targetX = dpToPx(16)
-                targetY = currentY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
+                targetY = orbParams.y.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
             }
             rightDist < SNAP_THRESHOLD -> {
                 targetX = screenW - dpToPx(ORB_SIZE) - dpToPx(16)
-                targetY = currentY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
+                targetY = orbParams.y.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
             }
             topDist < SNAP_THRESHOLD -> {
-                targetX = currentX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
+                targetX = orbParams.x.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
                 targetY = dpToPx(50)
             }
             bottomDist < SNAP_THRESHOLD -> {
-                targetX = currentX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
+                targetX = orbParams.x.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
                 targetY = screenH - dpToPx(ORB_SIZE) - dpToPx(50)
             }
             else -> {
@@ -426,10 +432,8 @@ class IvoryOverlayService : Service() {
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
             addUpdateListener { anim ->
                 val prog = anim.animatedValue as Float
-                orbParams.x = (currentX + (targetX - currentX) * prog).toInt()
-                orbParams.y = (currentY + (targetY - currentY) * prog).toInt()
-                currentX = orbParams.x
-                currentY = orbParams.y
+                orbParams.x = (orbParams.x + (targetX - orbParams.x) * prog).toInt()
+                orbParams.y = (orbParams.y + (targetY - orbParams.y) * prog).toInt()
                 windowManager.updateViewLayout(orbRoot, orbParams)
             }
             start()
@@ -522,6 +526,7 @@ class IvoryOverlayService : Service() {
         originalInputCard?.visibility = View.VISIBLE
         thinkingCard?.visibility = View.GONE
         responseCard?.visibility = View.GONE
+        applyCardFixes()  // Reapply fixes every time
     }
 
     private fun hideOverlay() {
@@ -676,7 +681,7 @@ class IvoryOverlayService : Service() {
         }, 100)
     }
 
-    // Theme
+    // Theme + Card Fixes
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
@@ -711,6 +716,41 @@ class IvoryOverlayService : Service() {
         miniVoiceContainer?.background = border
 
         applyGradientToTitle()
+    }
+
+    private fun applyCardFixes() {
+        // Original Input Card
+        originalInputCard?.apply {
+            post {
+                val lp = layoutParams
+                lp.height = dpToPx(INPUT_CARD_HEIGHT_DP)
+                layoutParams = lp
+
+                // Voice button smaller
+                voiceContainer?.layoutParams?.apply {
+                    width = dpToPx(VOICE_BUTTON_SIZE_DP)
+                    height = dpToPx(VOICE_BUTTON_SIZE_DP)
+                }
+
+                // Input field
+                inputField?.apply {
+                    textSize = 15f
+                    setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                }
+            }
+        }
+
+        // Mini Input Card
+        miniInputCard?.apply {
+            post {
+                val lp = layoutParams
+                lp.height = dpToPx(MINI_INPUT_HEIGHT_DP)
+                layoutParams = lp
+
+                // Reduce inner padding
+                (getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
+            }
+        }
     }
 
     private fun applyGradientToTitle() {
@@ -770,5 +810,6 @@ class IvoryOverlayService : Service() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         applyTheme()
+        applyCardFixes()
     }
 }
