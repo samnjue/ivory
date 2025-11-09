@@ -206,8 +206,6 @@ class IvoryOverlayService : Service() {
         overlayContainer = inflater.inflate(R.layout.assist_overlay, null).apply {
             alpha = 0f
             visibility = View.GONE
-            clipChildren = false
-            clipToPadding = false
         }
         val overlayParams = WindowManager.LayoutParams().apply {
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -230,13 +228,18 @@ class IvoryOverlayService : Service() {
     // View binding
     private fun bindOverlayViews() {
         overlayContainer?.let { root ->
+            (root as? ViewGroup)?.apply {
+                clipChildren = false
+                clipToPadding = false
+            }
+
             originalInputCard = root.findViewById(R.id.originalInputCard)
             thinkingCard = root.findViewById(R.id.thinkingCard)
             responseCard = root.findViewById(R.id.responseCard)
             responseScrollView = root.findViewById(R.id.responseScrollView)
             miniInputContainer = root.findViewById(R.id.miniInputContainer)
             miniInputCard = root.findViewById(R.id.miniInputCard)
-            
+
             inputField = root.findViewById(R.id.inputField)
             paperclipButton = root.findViewById(R.id.paperclipButton)
             micContainer = root.findViewById(R.id.micContainer)
