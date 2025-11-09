@@ -973,17 +973,6 @@ class IvoryOverlayService : Service() {
             aiResponseTitle?.paint?.shader = grad
             aiResponseTitle?.invalidate()
         }
-        aiResponseIcon?.post {
-            val w = aiResponseIcon?.width?.toFloat() ?: return@post
-            if (w <= 0) return@post
-            val grad = LinearGradient(
-                0f, 0f, w, 0f,
-                Color.parseColor("#e63946"), Color.parseColor("#4285f4"),
-                Shader.TileMode.CLAMP
-            )
-            aiResponseIcon?.paint?.shader = grad
-            aiResponseIcon?.invalidate()
-        }
     }
 
     // Keyboard helpers

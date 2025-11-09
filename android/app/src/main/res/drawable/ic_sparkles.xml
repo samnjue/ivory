@@ -5,30 +5,58 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-  <path
-      android:strokeColor="#000000"
-      android:strokeWidth="2"
-      android:strokeLineCap="round"
-      android:strokeLineJoin="round"
-      android:pathData="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+    <defs>
+        <linearGradient
+            android:id="@+id/starGradient"
+            android:startX="0%"
+            android:startY="50%"
+            android:endX="100%"
+            android:endY="50%"
+            android:type="linear">
+            <stop android:offset="0%" android:color="#e63946"/>
+            <stop android:offset="100%" android:color="#4285f4"/>
+        </linearGradient>
+    </defs>
 
-  <path
-      android:strokeColor="#000000"
-      android:strokeWidth="2"
-      android:strokeLineCap="round"
-      android:strokeLineJoin="round"
-      android:pathData="M20 2v4" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/transparent"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z">
 
-  <path
-      android:strokeColor="#000000"
-      android:strokeWidth="2"
-      android:strokeLineCap="round"
-      android:strokeLineJoin="round"
-      android:pathData="M22 4h-4" />
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="100%"
+                android:centerX="50%"
+                android:centerY="50%"
+                android:type="radial"
+                android:startColor="#80e63946"
+                android:endColor="#804285f4"/>
+        </aapt:attr>
 
-  <path
-      android:strokeColor="#000000"
-      android:strokeWidth="2"
-      android:pathData="M4,20 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:href="@id/starGradient"/>
+        </aapt:attr>
+    </path>
+
+    <path
+        android:strokeColor="@id/starGradient"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20 2v4" />
+    <path
+        android:strokeColor="@id/starGradient"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M22 4h-4" />
+
+    <path
+        android:fillColor="@id/starGradient"
+        android:pathData="M4,20 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
 
 </vector>
