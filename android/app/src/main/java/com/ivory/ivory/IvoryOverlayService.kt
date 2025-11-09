@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -24,8 +25,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
-class IvoryOverlayService : Service() {
-
+class IvoryOverlayService : Service() {    
     companion object {
         @JvmStatic
         fun start(context: Context) {
@@ -113,7 +113,7 @@ class IvoryOverlayService : Service() {
     // Dummy response
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
-    
+   
     private val NOTIFICATION_ID = 1
 
     // Service lifecycle
@@ -163,7 +163,7 @@ class IvoryOverlayService : Service() {
             setOnTouchListener(OrbTouchListener())
             setOnClickListener { toggleOverlay() }
         }
-        
+       
         orbParams = WindowManager.LayoutParams().apply {
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -258,22 +258,29 @@ class IvoryOverlayService : Service() {
             miniMicIcon = root.findViewById(R.id.miniMicIcon)
             miniVoiceContainer = root.findViewById(R.id.miniVoiceContainer)
             miniSendButton = root.findViewById(R.id.miniSendButton)
-
+            
             responseScrollView?.isVerticalScrollBarEnabled = false
             responseScrollView?.overScrollMode = View.OVER_SCROLL_NEVER
-
+            
             // Disable clipping on key containers
-            responseCard?.clipChildren = false
-            responseCard?.clipToPadding = false
-            miniInputContainer?.clipChildren = false
-            miniInputContainer?.clipToPadding = false
-            thinkingCard?.clipChildren = false
-            thinkingCard?.clipToPadding = false
-            originalInputCard?.clipChildren = false
-            originalInputCard?.clipToPadding = false
+            responseCard?.let {
+                it.clipChildren = false
+                it.clipToPadding = false
+            }
+            miniInputContainer?.let {
+                it.clipChildren = false
+                it.clipToPadding = false
+            }
+            thinkingCard?.let {
+                it.clipChildren = false
+                it.clipToPadding = false
+            }
+            originalInputCard?.let {
+                it.clipChildren = false
+                it.clipToPadding = false
+            }
         }
     }
-
     // UI setup
     private fun setupUi() {
         overlayContainer?.findViewById<View>(R.id.rootOverlay)
@@ -365,7 +372,7 @@ class IvoryOverlayService : Service() {
                         orbParams.y = newY.coerceIn(0, screenH - orbH)
 
                         windowManager.updateViewLayout(orbRoot, orbParams)
-                        
+                       
                         updateRemovePillVisibility(orbParams.y + orbH)
                         checkOverlapWithRemovePill()
                         if (overlayContainer?.visibility == View.VISIBLE) {
@@ -411,7 +418,7 @@ class IvoryOverlayService : Service() {
 
         val targetX: Int
         val targetY: Int
-        
+       
         when {
             leftDist < SNAP_THRESHOLD -> {
                 targetX = dpToPx(16)
@@ -457,7 +464,7 @@ class IvoryOverlayService : Service() {
         orbTintRing?.alpha = 0.6f
         orbTintRing?.setColorFilter(Color.parseColor("#FF3B30"), PorterDuff.Mode.SRC_ATOP)
     }
-
+    
     private fun resetOrbColor() {
         orbTintRing?.alpha = 0f
         orbTintRing?.clearColorFilter()
@@ -537,8 +544,8 @@ class IvoryOverlayService : Service() {
         originalInputCard?.visibility = View.VISIBLE
         thinkingCard?.visibility = View.GONE
         responseCard?.visibility = View.GONE
-        applyTheme() 
-        applyCardFixes() 
+        applyTheme()
+        applyCardFixes()
     }
 
     private fun hideOverlay() {
@@ -547,7 +554,7 @@ class IvoryOverlayService : Service() {
             resetState()
         }?.start()
     }
-    
+   
     private fun resetState() {
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
         thinkingIvoryStar?.clearAnimation()
@@ -584,7 +591,7 @@ class IvoryOverlayService : Service() {
 
         uiHandler.postDelayed({
             thinkingCard?.visibility = View.VISIBLE
-            applyTheme() 
+            applyTheme()
             applyCardFixes()
             thinkingCard?.requestLayout()
             thinkingCard?.invalidate()
@@ -595,7 +602,7 @@ class IvoryOverlayService : Service() {
             uiHandler.postDelayed({ showResponsePhase() }, 5000)
         }, 200)
     }
-    
+   
     private fun showResponsePhase() {
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
         thinkingIvoryStar?.clearAnimation()
@@ -612,7 +619,7 @@ class IvoryOverlayService : Service() {
             startTypewriterEffect()
         }?.start()
     }
-    
+   
     private fun startTypewriterEffect() {
         aiResponseText?.text = ""
         val words = dummyResponse.split(" ")
@@ -726,23 +733,20 @@ class IvoryOverlayService : Service() {
 
         val bgRes = if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
         val bg = ContextCompat.getDrawable(this, bgRes)
-        originalInputCard?.background = bg
-        thinkingCard?.background = bg
-        responseCard?.background = bg
-
+        originalInputCard?.let { it.background = bg }
+        thinkingCard?.let { it.background = bg }
+        responseCard?.let { it.background = bg }
         val borderRes = if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         val border = ContextCompat.getDrawable(this, borderRes)
-        voiceContainer?.background = border
-        miniVoiceContainer?.background = border
-
+        voiceContainer?.let { it.background = border }
+        miniVoiceContainer?.let { it.background = border }
         // Special pill background for mini input card
         val cardColor = if (isDark) Color.parseColor("#1E1E1E") else Color.WHITE
         val miniBg = GradientDrawable()
         miniBg.shape = GradientDrawable.RECTANGLE
         miniBg.cornerRadius = dpToPx(24).toFloat()
         miniBg.setColor(cardColor)
-        miniInputCard?.background = miniBg
-
+        miniInputCard?.let { it.background = miniBg }
         applyGradientToTitle()
     }
 
@@ -753,7 +757,7 @@ class IvoryOverlayService : Service() {
                 val lp = layoutParams
                 lp.height = dpToPx(INPUT_CARD_HEIGHT_DP)
                 layoutParams = lp
-
+                
                 // Voice button smaller
                 voiceContainer?.layoutParams?.apply {
                     width = dpToPx(VOICE_BUTTON_SIZE_DP)
@@ -769,7 +773,7 @@ class IvoryOverlayService : Service() {
                 invalidate()
             }
         }
-
+        
         // Mini Input Card
         miniInputCard?.apply {
             post {
@@ -781,7 +785,7 @@ class IvoryOverlayService : Service() {
                     it.bottomMargin = dpToPx(8)
                 }
                 layoutParams = lp
-                
+               
                 (getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
                 clipToOutline = true
                 outlineProvider = ViewOutlineProvider.BACKGROUND
@@ -789,6 +793,7 @@ class IvoryOverlayService : Service() {
                 invalidate()
             }
         }
+
         // Invalidate other cards to ensure redraw
         thinkingCard?.post {
             thinkingCard?.requestLayout()
@@ -822,7 +827,7 @@ class IvoryOverlayService : Service() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
     }
-    
+   
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         inputField?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
@@ -852,7 +857,7 @@ class IvoryOverlayService : Service() {
         uiHandler.removeCallbacksAndMessages(null)
         thinkingIvoryStar?.clearAnimation()
     }
-    
+   
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         applyTheme()
