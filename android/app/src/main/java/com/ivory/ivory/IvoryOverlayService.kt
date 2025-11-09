@@ -155,7 +155,7 @@ class IvoryOverlayService : Service() {
     private fun createOrb() {
         val inflater = LayoutInflater.from(this)
         orbRoot = inflater.inflate(R.layout.ivory_orb, null).apply {
-            orbBackground = findViewById(R.id.orb_background)
+            orbBackground = findViewById(R.id.orb_gradient)
             orbTintRing = findViewById(R.id.orb_tint_ring)
             orbStar = findViewById(R.id.orb_star)
             setOnTouchListener(OrbTouchListener())
