@@ -18,8 +18,6 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.graphics.Paint
-import android.view.ViewGroup
 import android.view.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
@@ -51,10 +49,11 @@ class IvoryOverlayService : Service() {
     private val TAG = "IvoryOverlayService"
     private lateinit var windowManager: WindowManager
 
-    // Views
+    // Views 
     private var orbRoot: View? = null
     private var orbGradient: ImageView? = null
     private var orbTintRing: ImageView? = null
+    private var orbStarContainer: FrameLayout? = null          
     private var orbStar: ImageView? = null
     private var removePill: View? = null
     private var overlayContainer: View? = null
@@ -66,7 +65,7 @@ class IvoryOverlayService : Service() {
     private var miniInputContainer: FrameLayout? = null
     private var miniInputCard: FrameLayout? = null
 
-    // Input views
+    // Input
     private var inputField: EditText? = null
     private var paperclipButton: ImageButton? = null
     private var micContainer: View? = null
@@ -83,7 +82,7 @@ class IvoryOverlayService : Service() {
     private var aiResponseText: TextView? = null
     private var aiResponseTitle: TextView? = null
     private var aiResponseIcon: ImageView? = null
-  
+
     // Mini input
     private var miniInputField: EditText? = null
     private var miniPaperclipButton: ImageButton? = null
@@ -97,24 +96,26 @@ class IvoryOverlayService : Service() {
     private lateinit var orbParams: WindowManager.LayoutParams
     private lateinit var pillParams: WindowManager.LayoutParams
 
-    // State
+    // State 
     private var isListening = false
     private val stopListeningHandler = Handler(Looper.getMainLooper())
     private val uiHandler = Handler(Looper.getMainLooper())
     private var thinkingDotsRunnable: Runnable? = null
 
-    // Drag state
+    // Drag
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
     private var isOverRemove = false
-    // Orb state
+
+    // Orb
     private var isDimmed = false
     private var primaryEdge: String = "vertical"
     private var originalX = 0
     private var originalY = 0
     private val dimHandler = Handler(Looper.getMainLooper())
     private val dimRunnable = Runnable { dimOrbIfInactive() }
+
     // Constants
     private val NORMAL_SIZE_DP = 56
     private val DIM_SIZE_DP = 40
@@ -127,10 +128,10 @@ class IvoryOverlayService : Service() {
     private val SNAP_THRESHOLD = 100
     private val INPUT_CARD_HEIGHT_DP = 56
     private val MINI_INPUT_HEIGHT_DP = 52
-    // Dummy response
+
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
-    
+
     private val NOTIFICATION_ID = 1
 
     // Service lifecycle
@@ -156,7 +157,7 @@ class IvoryOverlayService : Service() {
         createOverlay()
     }
 
-    // Notification channel
+    // Notification
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -176,21 +177,25 @@ class IvoryOverlayService : Service() {
         orbRoot = inflater.inflate(R.layout.ivory_orb, null).apply {
             orbGradient = findViewById(R.id.orb_gradient)
             orbTintRing = findViewById(R.id.orb_tint_ring)
+            orbStarContainer = findViewById(R.id.orb_star_container) 
             orbStar = findViewById(R.id.orb_star)
+
             setOnTouchListener(OrbTouchListener())
             setOnClickListener { toggleOverlay() }
+
             clipToOutline = false
             (this as? ViewGroup)?.clipChildren = false
             (this as? ViewGroup)?.clipToPadding = false
         }
-     
+
         orbParams = WindowManager.LayoutParams().apply {
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE
             format = PixelFormat.TRANSLUCENT
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_NOT_CLIP_HARDWARE
             gravity = Gravity.TOP or Gravity.START
             width = dpToPx(NORMAL_SIZE_DP)
             height = dpToPx(NORMAL_SIZE_DP)
@@ -198,6 +203,10 @@ class IvoryOverlayService : Service() {
             y = windowManager.defaultDisplay.height / 2
         }
         windowManager.addView(orbRoot, orbParams)
+
+        // Store original position for restore animation
+        originalX = orbParams.x
+        originalY = orbParams.y
     }
 
     // Remove-pill
@@ -252,7 +261,7 @@ class IvoryOverlayService : Service() {
                 clipChildren = false
                 clipToPadding = false
             }
-            
+
             originalInputCard = root.findViewById(R.id.originalInputCard)
             thinkingCard = root.findViewById(R.id.thinkingCard)
             responseCard = root.findViewById(R.id.responseCard)
@@ -283,35 +292,24 @@ class IvoryOverlayService : Service() {
             miniMicBlurLayer = root.findViewById(R.id.miniMicBlurLayer)
             miniVoiceContainer = root.findViewById(R.id.miniVoiceContainer)
             miniSendButton = root.findViewById(R.id.miniSendButton)
-        
+
             responseScrollView?.isVerticalScrollBarEnabled = false
             responseScrollView?.overScrollMode = View.OVER_SCROLL_NEVER
-        
-            // Disable clipping on key containers
-            responseCard?.let {
-                (it as ViewGroup).clipChildren = false
-                (it as ViewGroup).clipToPadding = false
-            }
-            miniInputContainer?.let {
-                (it as ViewGroup).clipChildren = false
-                (it as ViewGroup).clipToPadding = false
-            }
-            thinkingCard?.let {
-                (it as ViewGroup).clipChildren = false
-                (it as ViewGroup).clipToPadding = false
-            }
-            originalInputCard?.let {
-                (it as ViewGroup).clipChildren = false
-                (it as ViewGroup).clipToPadding = false
+
+            listOf(responseCard, miniInputContainer, thinkingCard, originalInputCard).forEach {
+                it?.let { card ->
+                    (card as ViewGroup).clipChildren = false
+                    card.clipToPadding = false
+                }
             }
         }
     }
+
     // UI setup
     private fun setupUi() {
         overlayContainer?.findViewById<View>(R.id.rootOverlay)
             ?.setOnClickListener { hideOverlay() }
 
-        // Original input
         paperclipButton?.setOnClickListener { Log.d(TAG, "Paperclip tapped") }
         voiceContainer?.setOnClickListener { openMainApp(null); hideOverlay() }
         sendButton?.setOnClickListener {
@@ -322,7 +320,6 @@ class IvoryOverlayService : Service() {
                 startThinkingPhase()
             }
         }
-
         micContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation(true)
@@ -331,9 +328,7 @@ class IvoryOverlayService : Service() {
                 stopListeningAnimation(true)
             }
         }
-
         inputField?.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) showKeyboard(inputField) }
-
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -345,7 +340,6 @@ class IvoryOverlayService : Service() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Mini input
         miniPaperclipButton?.setOnClickListener { Log.d(TAG, "Mini paperclip tapped") }
         miniVoiceContainer?.setOnClickListener { openMainApp(null); hideOverlay() }
         miniSendButton?.setOnClickListener {
@@ -356,7 +350,6 @@ class IvoryOverlayService : Service() {
                 startThinkingPhase()
             }
         }
-
         miniMicContainer?.setOnClickListener {
             if (!isListening) {
                 startListeningAnimation(false)
@@ -365,9 +358,7 @@ class IvoryOverlayService : Service() {
                 stopListeningAnimation(false)
             }
         }
-
         miniInputField?.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) showKeyboard(miniInputField) }
-
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -379,61 +370,44 @@ class IvoryOverlayService : Service() {
         })
     }
 
-    // Touch / Drag
+    // Orb Touch / Drag
     private inner class OrbTouchListener : View.OnTouchListener {
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     dimHandler.removeCallbacks(dimRunnable)
-                    if (isDimmed) {
-                        restoreOrb()
-                    }
+                    if (isDimmed) restoreOrb()
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
                     return true
                 }
-
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
-
-                    if (!isDragging && (abs(dx) > 10 || abs(dy) > 10)) {
-                        isDragging = true
-                    }
-
+                    if (!isDragging && (abs(dx) > 10 || abs(dy) > 10)) isDragging = true
                     if (isDragging) {
                         val newX = (orbParams.x + dx).toInt()
                         val newY = (orbParams.y + dy).toInt()
-
                         val screenW = resources.displayMetrics.widthPixels
                         val screenH = resources.displayMetrics.heightPixels
                         val orbW = orbParams.width
                         val orbH = orbParams.height
                         orbParams.x = newX.coerceIn(0, screenW - orbW)
                         orbParams.y = newY.coerceIn(0, screenH - orbH)
+                        safeUpdateLayout(orbRoot, orbParams)
 
-                        windowManager.updateViewLayout(orbRoot, orbParams)
-                    
                         updateRemovePillVisibility(orbParams.y + orbH)
                         checkOverlapWithRemovePill()
-                        if (overlayContainer?.visibility == View.VISIBLE) {
-                            positionOverlayNextToOrb()
-                        }
+                        if (overlayContainer?.visibility == View.VISIBLE) positionOverlayNextToOrb()
 
-                        // Reset for next move
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
                     }
                     return true
                 }
-
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        v.performClick()
-                    } else {
-                        snapToEdgeOrRemove()
-                    }
+                    if (!isDragging) v.performClick() else snapToEdgeOrRemove()
                     isDragging = false
                     hideRemovePill()
                     resetOrbColor()
@@ -451,57 +425,65 @@ class IvoryOverlayService : Service() {
     }
 
     private fun dimOrbIfInactive() {
-        if (overlayContainer?.visibility != View.VISIBLE && !isDimmed) {
-            dimOrb()
-        }
+        if (overlayContainer?.visibility != View.VISIBLE && !isDimmed) dimOrb()
     }
 
     // Snap-to-edge
     private fun snapToEdgeOrRemove() {
         val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
-
-        if (isOverRemove) {
-            hideOrb()
-            return
-        }
+        if (isOverRemove) { hideOrb(); return }
 
         val leftDist = orbParams.x
         val rightDist = screenW - (orbParams.x + orbParams.width)
         val topDist = orbParams.y
         val bottomDist = screenH - (orbParams.y + orbParams.height)
-        var targetX: Int = orbParams.x
-        var targetY: Int = orbParams.y
+
+        var targetX = orbParams.x
+        var targetY = orbParams.y
         primaryEdge = "vertical"
-    
+
         when {
             leftDist < SNAP_THRESHOLD -> {
                 targetX = dpToPx(NORMAL_MARGIN_SIDE_DP)
-                targetY = orbParams.y.coerceIn(dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP), screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP))
+                targetY = orbParams.y.coerceIn(
+                    dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP),
+                    screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
+                )
                 primaryEdge = "vertical"
             }
             rightDist < SNAP_THRESHOLD -> {
                 targetX = screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP)
-                targetY = orbParams.y.coerceIn(dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP), screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP))
+                targetY = orbParams.y.coerceIn(
+                    dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP),
+                    screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
+                )
                 primaryEdge = "vertical"
             }
             topDist < SNAP_THRESHOLD -> {
-                targetX = orbParams.x.coerceIn(dpToPx(NORMAL_MARGIN_SIDE_DP), screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP))
+                targetX = orbParams.x.coerceIn(
+                    dpToPx(NORMAL_MARGIN_SIDE_DP),
+                    screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP)
+                )
                 targetY = dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
                 primaryEdge = "horizontal"
             }
             bottomDist < SNAP_THRESHOLD -> {
-                targetX = orbParams.x.coerceIn(dpToPx(NORMAL_MARGIN_SIDE_DP), screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP))
+                targetX = orbParams.x.coerceIn(
+                    dpToPx(NORMAL_MARGIN_SIDE_DP),
+                    screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP)
+                )
                 targetY = screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
                 primaryEdge = "horizontal"
             }
             else -> {
-                targetX = if (leftDist < rightDist) dpToPx(NORMAL_MARGIN_SIDE_DP) else screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP)
-                targetY = if (topDist < bottomDist) dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP) else screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
+                targetX = if (leftDist < rightDist) dpToPx(NORMAL_MARGIN_SIDE_DP)
+                else screenW - orbParams.width - dpToPx(NORMAL_MARGIN_SIDE_DP)
+                targetY = if (topDist < bottomDist) dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
+                else screenH - orbParams.height - dpToPx(NORMAL_MARGIN_TOP_BOTTOM_DP)
                 primaryEdge = "vertical"
             }
         }
-
         animateSnap(targetX, targetY)
     }
 
@@ -513,7 +495,7 @@ class IvoryOverlayService : Service() {
                 val prog = anim.animatedValue as Float
                 orbParams.x = (orbParams.x + (targetX - orbParams.x) * prog).toInt()
                 orbParams.y = (orbParams.y + (targetY - orbParams.y) * prog).toInt()
-                windowManager.updateViewLayout(orbRoot, orbParams)
+                safeUpdateLayout(orbRoot, orbParams)
             }
             addListener(object : Animator.AnimatorListener {
                 override fun onAnimationEnd(animation: Animator) {
@@ -529,29 +511,27 @@ class IvoryOverlayService : Service() {
         }
     }
 
+    // Dim / Restore orb (with safe layout updates)
     private fun dimOrb() {
+        if (!orbRoot!!.isAttachedToWindow) return
+
         val normalW = dpToPx(NORMAL_SIZE_DP)
         val normalH = dpToPx(NORMAL_SIZE_DP)
         val dimW = dpToPx(DIM_SIZE_DP)
         val dimH = dpToPx(DIM_SIZE_DP)
         val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
+
         var targetX = orbParams.x
         var targetY = orbParams.y
 
         if (primaryEdge == "vertical") {
-            if (orbParams.x < screenW / 2) {
-                targetX = dpToPx(DIM_MARGIN_DP)
-            } else {
-                targetX = screenW - dimW - dpToPx(DIM_MARGIN_DP)
-            }
+            targetX = if (orbParams.x < screenW / 2) dpToPx(DIM_MARGIN_DP)
+            else screenW - dimW - dpToPx(DIM_MARGIN_DP)
             targetY = targetY.coerceIn(dpToPx(DIM_MARGIN_DP), screenH - dimH - dpToPx(DIM_MARGIN_DP))
         } else {
-            if (orbParams.y < screenH / 2) {
-                targetY = dpToPx(DIM_MARGIN_DP)
-            } else {
-                targetY = screenH - dimH - dpToPx(DIM_MARGIN_DP)
-            }
+            targetY = if (orbParams.y < screenH / 2) dpToPx(DIM_MARGIN_DP)
+            else screenH - dimH - dpToPx(DIM_MARGIN_DP)
             targetX = targetX.coerceIn(dpToPx(DIM_MARGIN_DP), screenW - dimW - dpToPx(DIM_MARGIN_DP))
         }
 
@@ -563,24 +543,26 @@ class IvoryOverlayService : Service() {
                 orbParams.height = (normalH + (dimH - normalH) * prog).toInt()
                 orbParams.x = (orbParams.x + (targetX - orbParams.x) * prog).toInt()
                 orbParams.y = (orbParams.y + (targetY - orbParams.y) * prog).toInt()
-                windowManager.updateViewLayout(orbRoot, orbParams)
-                orbRoot?.alpha = 1f + (DIM_ALPHA - 1f) * prog
-            }
+                safeUpdateLayout(orbRoot, orbParams)
 
+                orbRoot?.alpha = 1f + (DIM_ALPHA - 1f) * prog
+                val scale = DIM_SIZE_DP.toFloat() / NORMAL_SIZE_DP.toFloat()
+                orbStar?.scaleX = 1f + (scale - 1f) * prog
+                orbStar?.scaleY = 1f + (scale - 1f) * prog
+            }
             addListener(object : Animator.AnimatorListener {
-                override fun onAnimationEnd(animation: Animator) {
-                    isDimmed = true
-                }
+                override fun onAnimationEnd(animation: Animator) { isDimmed = true }
                 override fun onAnimationStart(animation: Animator) {}
                 override fun onAnimationCancel(animation: Animator) {}
                 override fun onAnimationRepeat(animation: Animator) {}
             })
-
             start()
         }
     }
 
     private fun restoreOrb() {
+        if (!orbRoot!!.isAttachedToWindow) return
+
         val dimW = dpToPx(DIM_SIZE_DP)
         val dimH = dpToPx(DIM_SIZE_DP)
         val normalW = dpToPx(NORMAL_SIZE_DP)
@@ -588,36 +570,44 @@ class IvoryOverlayService : Service() {
 
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 200
-
             addUpdateListener { anim ->
                 val prog = anim.animatedValue as Float
                 orbParams.width = (dimW + (normalW - dimW) * prog).toInt()
                 orbParams.height = (dimH + (normalH - dimH) * prog).toInt()
                 orbParams.x = (orbParams.x + (originalX - orbParams.x) * prog).toInt()
                 orbParams.y = (orbParams.y + (originalY - orbParams.y) * prog).toInt()
-                windowManager.updateViewLayout(orbRoot, orbParams)
-                orbRoot?.alpha = DIM_ALPHA + (1f - DIM_ALPHA) * prog
-            }
+                safeUpdateLayout(orbRoot, orbParams)
 
+                orbRoot?.alpha = DIM_ALPHA + (1f - DIM_ALPHA) * prog
+                val scale = NORMAL_SIZE_DP.toFloat() / DIM_SIZE_DP.toFloat()
+                orbStar?.scaleX = (DIM_SIZE_DP.toFloat() / NORMAL_SIZE_DP.toFloat()) + (scale - (DIM_SIZE_DP.toFloat() / NORMAL_SIZE_DP.toFloat())) * prog
+                orbStar?.scaleY = orbStar?.scaleX ?: 1f
+            }
             addListener(object : Animator.AnimatorListener {
-                override fun onAnimationEnd(animation: Animator) {
-                    isDimmed = false
-                }
+                override fun onAnimationEnd(animation: Animator) { isDimmed = false }
                 override fun onAnimationStart(animation: Animator) {}
                 override fun onAnimationCancel(animation: Animator) {}
                 override fun onAnimationRepeat(animation: Animator) {}
             })
-
             start()
         }
     }
 
-    // Red-tint
+    /** Safe wrapper – only update if view is attached */
+    private fun safeUpdateLayout(view: View?, params: WindowManager.LayoutParams) {
+        if (view?.isAttachedToWindow == true) {
+            try { windowManager.updateViewLayout(view, params) } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Failed to update layout", e)
+            }
+        }
+    }
+
+    // Red-tint helpers
     private fun setOrbRed() {
         orbTintRing?.alpha = 0.6f
         orbTintRing?.setColorFilter(Color.parseColor("#FF3B30"), PorterDuff.Mode.SRC_ATOP)
     }
- 
+
     private fun resetOrbColor() {
         orbTintRing?.alpha = 0f
         orbTintRing?.clearColorFilter()
@@ -645,11 +635,10 @@ class IvoryOverlayService : Service() {
             removePill?.animate()?.alpha(1f)?.setDuration(200)?.start()
         }
     }
-    
+
     private fun hideRemovePill() {
-        removePill?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
-            removePill?.visibility = View.GONE
-        }?.start()
+        removePill?.animate()?.alpha(0f)?.setDuration(200)
+            ?.withEndAction { removePill?.visibility = View.GONE }?.start()
     }
 
     private fun checkOverlapWithRemovePill() {
@@ -667,21 +656,14 @@ class IvoryOverlayService : Service() {
         val over = pillRect.contains(orbCenterX.toInt(), orbCenterY.toInt())
         if (over != isOverRemove) {
             isOverRemove = over
-            if (over) {
-                setOrbRed()
-                setPillRed()
-            } else {
-                resetOrbColor()
-                setPillBlack()
-            }
+            if (over) { setOrbRed(); setPillRed() } else { resetOrbColor(); setPillBlack() }
         }
     }
 
     private fun hideOrb() {
         orbRoot?.animate()
             ?.scaleX(0.3f)?.scaleY(0.3f)?.alpha(0f)?.setDuration(200)
-            ?.withEndAction { stopSelf() }
-            ?.start()
+            ?.withEndAction { stopSelf() }?.start()
     }
 
     // Overlay show / hide
@@ -722,16 +704,15 @@ class IvoryOverlayService : Service() {
         val orbX = loc[0]
         val screenW = resources.displayMetrics.widthPixels
         val onRight = orbX > screenW / 2
-
         val params = overlayContainer?.layoutParams as WindowManager.LayoutParams
         params.x = if (onRight) orbX - dpToPx(300) else orbX + orbParams.width + dpToPx(8)
         params.y = loc[1] - dpToPx(20)
         params.width = dpToPx(300)
         params.height = WindowManager.LayoutParams.WRAP_CONTENT
-        windowManager.updateViewLayout(overlayContainer, params)
+        safeUpdateLayout(overlayContainer, params)
     }
 
-    // Thinking / response phases
+    // Thinking / Response phases
     private fun startThinkingPhase() {
         thinkingDotsRunnable?.let { uiHandler.removeCallbacks(it) }
         originalInputCard?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
@@ -794,15 +775,23 @@ class IvoryOverlayService : Service() {
     private fun updateResponseCardHeight() {
         val dm = resources.displayMetrics
         val maxH = (dm.heightPixels * 0.8).toInt()
+
         responseContent?.measure(
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
-        val contentH = (responseContent?.measuredHeight ?: 0) + (miniInputContainer?.height ?: 0)
-        val targetH = contentH.coerceAtMost(maxH)
+        val contentH = responseContent?.measuredHeight ?: 0
+        val miniH = miniInputContainer?.height ?: 0
+        val total = contentH + miniH + dpToPx(16) // base padding
+        val targetH = total.coerceAtMost(maxH)
+
         responseScrollView?.layoutParams?.height = targetH
         responseScrollView?.requestLayout()
-        responseCard?.invalidate()
+
+        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.apply {
+            bottomMargin = dpToPx(8)
+            responseContent?.layoutParams = this
+        }
     }
 
     private fun animateThinkingDots() {
@@ -868,7 +857,7 @@ class IvoryOverlayService : Service() {
         }, 100)
     }
 
-    // Theme + Card Fixes
+    // Theming
     private fun applyTheme() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
@@ -883,88 +872,72 @@ class IvoryOverlayService : Service() {
         aiResponseText?.setTextColor(textColor)
 
         val tint = if (isDark) Color.WHITE else Color.parseColor("#333333")
-        paperclipButton?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
-        sendButton?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
-        micIcon?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
-        miniPaperclipButton?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
-        miniSendButton?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
-        miniMicIcon?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
+        listOf(paperclipButton, sendButton, micIcon, miniPaperclipButton, miniSendButton, miniMicIcon).forEach {
+            it?.imageTintList = android.content.res.ColorStateList.valueOf(tint)
+        }
 
         val bgRes = if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
         val bg = ContextCompat.getDrawable(this, bgRes)
-        originalInputCard?.background = bg
-        thinkingCard?.background = bg
-        responseCard?.background = bg
+        listOf(originalInputCard, thinkingCard, responseCard).forEach { it?.background = bg }
+
         val borderRes = if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         val border = ContextCompat.getDrawable(this, borderRes)
         voiceContainer?.background = border
         miniVoiceContainer?.background = border
-        // Special pill background for mini input card
+
         val cardColor = if (isDark) Color.parseColor("#1E1E1E") else Color.WHITE
-        val miniBg = GradientDrawable()
-        miniBg.shape = GradientDrawable.RECTANGLE
-        miniBg.cornerRadius = dpToPx(24).toFloat()
-        miniBg.setColor(cardColor)
+        val miniBg = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(24).toFloat()
+            setColor(cardColor)
+        }
         miniInputCard?.background = miniBg
+
         applyGradientToTitle()
     }
 
     private fun applyCardFixes() {
-        // Original Input Card
-        originalInputCard?.apply {
-            post {
-                val lp = layoutParams
-                lp.height = dpToPx(INPUT_CARD_HEIGHT_DP)
-                layoutParams = lp
-                // No size change for voice
-                // Input field
-                inputField?.apply {
-                    textSize = 15f
-                    setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-                }
-                (getChildAt(0) as? LinearLayout)?.let {
-                    it.clipToPadding = false
-                    it.clipChildren = false
-                }
-                requestLayout()
-                invalidate()
+        originalInputCard?.post {
+            val lp = originalInputCard?.layoutParams
+            lp?.height = dpToPx(INPUT_CARD_HEIGHT_DP)
+            originalInputCard?.layoutParams = lp
+            inputField?.apply {
+                textSize = 15f
+                setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
             }
-        }
-     
-        // Mini Input Card
-        miniInputCard?.apply {
-            post {
-                val lp = layoutParams as? FrameLayout.LayoutParams
-                lp?.let {
-                    it.height = dpToPx(MINI_INPUT_HEIGHT_DP)
-                    it.width = WindowManager.LayoutParams.WRAP_CONTENT
-                    it.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    it.bottomMargin = dpToPx(8)
-                }
-                layoutParams = lp
-            
-                (getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
-                clipToOutline = true
-                outlineProvider = ViewOutlineProvider.BACKGROUND
-                requestLayout()
-                invalidate()
+            (originalInputCard?.getChildAt(0) as? LinearLayout)?.apply {
+                clipToPadding = false
+                clipChildren = false
             }
+            originalInputCard?.requestLayout()
+            originalInputCard?.invalidate()
         }
 
-        // Invalidate other cards to ensure redraw
-        thinkingCard?.post {
-            thinkingCard?.requestLayout()
-            thinkingCard?.invalidate()
+        miniInputCard?.post {
+            val lp = miniInputCard?.layoutParams as? FrameLayout.LayoutParams
+            lp?.apply {
+                height = dpToPx(MINI_INPUT_HEIGHT_DP)
+                width = WindowManager.LayoutParams.WRAP_CONTENT
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = dpToPx(8)
+            }
+            miniInputCard?.layoutParams = lp
+            (miniInputCard?.getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
+            miniInputCard?.clipToOutline = true
+            miniInputCard?.outlineProvider = ViewOutlineProvider.BACKGROUND
+            miniInputCard?.requestLayout()
+            miniInputCard?.invalidate()
         }
-        responseCard?.post {
-            responseCard?.requestLayout()
-            responseCard?.invalidate()
+
+        listOf(thinkingCard, responseCard).forEach {
+            it?.post { it?.requestLayout(); it?.invalidate() }
         }
     }
+
     private fun applyGradientToTitle() {
         aiResponseTitle?.post {
             val w = aiResponseTitle?.width?.toFloat() ?: return@post
-            if (w <= 0) return@post
+            if (w <= 0f) return@post
             val grad = LinearGradient(
                 0f, 0f, w, 0f,
                 Color.parseColor("#e63946"), Color.parseColor("#4285f4"),
@@ -974,7 +947,7 @@ class IvoryOverlayService : Service() {
             aiResponseTitle?.invalidate()
         }
     }
-
+-
     // Keyboard helpers
     private fun showKeyboard(view: EditText?) {
         view?.requestFocus()
@@ -998,10 +971,10 @@ class IvoryOverlayService : Service() {
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
-   
+
     // Service lifecycle
     override fun onBind(intent: Intent?): IBinder? = null
-  
+
     override fun onDestroy() {
         super.onDestroy()
         orbRoot?.let { windowManager.removeView(it) }
