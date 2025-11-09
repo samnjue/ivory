@@ -48,7 +48,8 @@ class IvoryOverlayService : Service() {
 
     // Views
     private var orbRoot: View? = null
-    private var orbBackground: View? = null
+    private var orbBackground: ImageView? = null
+    private var orbTintRing: ImageView? = null
     private var orbStar: ImageView? = null
     private var removePill: View? = null
     private var overlayContainer: View? = null
@@ -155,6 +156,7 @@ class IvoryOverlayService : Service() {
         val inflater = LayoutInflater.from(this)
         orbRoot = inflater.inflate(R.layout.ivory_orb, null).apply {
             orbBackground = findViewById(R.id.orb_background)
+            orbTintRing = findViewById(R.id.orb_tint_ring)
             orbStar = findViewById(R.id.orb_star)
             setOnTouchListener(OrbTouchListener())
             setOnClickListener { toggleOverlay() }
@@ -413,11 +415,13 @@ class IvoryOverlayService : Service() {
 
     // Red-tint
     private fun setOrbRed() {
-        orbBackground?.setColorFilter(Color.parseColor("#88FF3B30"), PorterDuff.Mode.SRC_ATOP)
+        orbTintRing?.alpha = 0.6f
+        orbTintRing?.setColorFilter(Color.parseColor("#FF3B30"), PorterDuff.Mode.SRC_ATOP)
     }
 
     private fun resetOrbColor() {
-        orbBackground?.clearColorFilter()
+        orbTintRing?.alpha = 0f
+        orbTintRing?.clearColorFilter()
     }
 
     private fun setPillRed() {

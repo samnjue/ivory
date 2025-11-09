@@ -5,14 +5,21 @@
     android:layout_height="56dp"
     android:clipChildren="false"
     android:clipToPadding="false">
-
-    <View
-        android:id="@+id/orb_background"
+>
+    <ImageView
+        android:id="@+id/orb_gradient"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:background="@drawable/orb_background"
-        android:elevation="0dp"
-        android:translationZ="0dp" />
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/orb_tint_ring"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@drawable/orb_tint_ring"
+        android:scaleType="centerCrop"
+        android:alpha="0" />
 
     <ImageView
         android:id="@+id/orb_star"
@@ -20,6 +27,7 @@
         android:layout_height="32dp"
         android:layout_gravity="center"
         android:src="@drawable/ivorystar"
-        android:scaleType="centerInside" />
+        android:scaleType="centerInside"
+        android:tint="#FFFFFF" />
 
 </FrameLayout>
