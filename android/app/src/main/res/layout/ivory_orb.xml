@@ -5,7 +5,7 @@
     android:layout_height="56dp"
     android:clipChildren="false"
     android:clipToPadding="false">
->
+
     <ImageView
         android:id="@+id/orb_gradient"
         android:layout_width="56dp"
@@ -27,7 +27,6 @@
         android:layout_height="32dp"
         android:layout_gravity="center"
         android:src="@drawable/ivorystar"
-        android:scaleType="centerInside"
-        android:tint="#FFFFFF" />
+        android:scaleType="centerInside" />
 
 </FrameLayout>

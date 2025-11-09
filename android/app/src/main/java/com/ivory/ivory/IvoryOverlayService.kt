@@ -48,7 +48,7 @@ class IvoryOverlayService : Service() {
 
     // Views
     private var orbRoot: View? = null
-    private var orbBackground: ImageView? = null
+    private var orbGradient: ImageView? = null
     private var orbTintRing: ImageView? = null
     private var orbStar: ImageView? = null
     private var removePill: View? = null
@@ -97,8 +97,8 @@ class IvoryOverlayService : Service() {
     private var thinkingDotsRunnable: Runnable? = null
 
     // Drag state
-    private var initialX = 0
-    private var initialY = 0
+    private var currentX = 0
+    private var currentY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
@@ -108,10 +108,12 @@ class IvoryOverlayService : Service() {
     private val ORB_SIZE = 56
     private val PILL_MARGIN = 80
     private val SNAP_THRESHOLD = 100
+    private val INPUT_CARD_HEIGHT_DP = 56
 
     // Dummy response
     private val dummyResponse =
         "Einstein's field equations are the core of Einstein's general theory of relativity. They describe how matter and energy in the universe curve the fabric of spacetime. Essentially, they tell us that the curvature of spacetime is directly related to the energy and momentum of whatever is present. The equations are a set of ten interrelated differential equations..."
+
     private val NOTIFICATION_ID = 1
 
     // Service lifecycle
@@ -155,7 +157,7 @@ class IvoryOverlayService : Service() {
     private fun createOrb() {
         val inflater = LayoutInflater.from(this)
         orbRoot = inflater.inflate(R.layout.ivory_orb, null).apply {
-            orbBackground = findViewById(R.id.orb_gradient)
+            orbGradient = findViewById(R.id.orb_gradient)
             orbTintRing = findViewById(R.id.orb_tint_ring)
             orbStar = findViewById(R.id.orb_star)
             setOnTouchListener(OrbTouchListener())
@@ -175,6 +177,8 @@ class IvoryOverlayService : Service() {
             x = dpToPx(16)
             y = windowManager.defaultDisplay.height / 2
         }
+        currentX = orbParams.x
+        currentY = orbParams.y
         windowManager.addView(orbRoot, orbParams)
     }
 
@@ -220,6 +224,13 @@ class IvoryOverlayService : Service() {
         bindOverlayViews()
         setupUi()
         applyTheme()
+
+        // Programmatically set original input card height
+        originalInputCard?.post {
+            val heightPx = dpToPx(INPUT_CARD_HEIGHT_DP)
+            originalInputCard?.layoutParams?.height = heightPx
+            originalInputCard?.requestLayout()
+        }
     }
 
     // View binding
@@ -324,8 +335,6 @@ class IvoryOverlayService : Service() {
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = orbParams.x
-                    initialY = orbParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
@@ -338,10 +347,12 @@ class IvoryOverlayService : Service() {
                         isDragging = true
                     }
                     if (isDragging) {
-                        orbParams.x = initialX + dx
-                        orbParams.y = initialY + dy
+                        currentX = orbParams.x + dx
+                        currentY = orbParams.y + dy
+                        orbParams.x = currentX
+                        orbParams.y = currentY
                         windowManager.updateViewLayout(orbRoot, orbParams)
-                        updateRemovePillVisibility(orbParams.y + dpToPx(ORB_SIZE))
+                        updateRemovePillVisibility(currentY + dpToPx(ORB_SIZE))
                         checkOverlapWithRemovePill()
                         if (overlayContainer?.visibility == View.VISIBLE) {
                             positionOverlayNextToOrb()
@@ -365,7 +376,86 @@ class IvoryOverlayService : Service() {
         }
     }
 
-    // Remove-pill visibility
+    // Snap-to-edge – Preserve Y on L/R, X on T/B
+    private fun snapToEdgeOrRemove() {
+        val screenW = resources.displayMetrics.widthPixels
+        val screenH = resources.displayMetrics.heightPixels
+
+        if (isOverRemove) {
+            hideOrb()
+            return
+        }
+
+        val leftDist = currentX
+        val rightDist = screenW - (currentX + dpToPx(ORB_SIZE))
+        val topDist = currentY
+        val bottomDist = screenH - (currentY + dpToPx(ORB_SIZE))
+
+        val targetX: Int
+        val targetY: Int
+
+        when {
+            leftDist < SNAP_THRESHOLD -> {
+                targetX = dpToPx(16)
+                targetY = currentY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
+            }
+            rightDist < SNAP_THRESHOLD -> {
+                targetX = screenW - dpToPx(ORB_SIZE) - dpToPx(16)
+                targetY = currentY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
+            }
+            topDist < SNAP_THRESHOLD -> {
+                targetX = currentX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
+                targetY = dpToPx(50)
+            }
+            bottomDist < SNAP_THRESHOLD -> {
+                targetX = currentX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
+                targetY = screenH - dpToPx(ORB_SIZE) - dpToPx(50)
+            }
+            else -> {
+                targetX = if (leftDist < rightDist) dpToPx(16) else screenW - dpToPx(ORB_SIZE) - dpToPx(16)
+                targetY = if (topDist < bottomDist) dpToPx(50) else screenH - dpToPx(ORB_SIZE) - dpToPx(50)
+            }
+        }
+
+        animateSnap(targetX, targetY)
+    }
+
+    private fun animateSnap(targetX: Int, targetY: Int) {
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 260
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            addUpdateListener { anim ->
+                val prog = anim.animatedValue as Float
+                orbParams.x = (currentX + (targetX - currentX) * prog).toInt()
+                orbParams.y = (currentY + (targetY - currentY) * prog).toInt()
+                currentX = orbParams.x
+                currentY = orbParams.y
+                windowManager.updateViewLayout(orbRoot, orbParams)
+            }
+            start()
+        }
+    }
+
+    // Red-tint
+    private fun setOrbRed() {
+        orbTintRing?.alpha = 0.6f
+        orbTintRing?.setColorFilter(Color.parseColor("#FF3B30"), PorterDuff.Mode.SRC_ATOP)
+    }
+
+    private fun resetOrbColor() {
+        orbTintRing?.alpha = 0f
+        orbTintRing?.clearColorFilter()
+    }
+
+    private fun setPillRed() {
+        removePill?.background = ContextCompat.getDrawable(this, R.drawable.remove_pill_red)
+    }
+
+    private fun setPillBlack() {
+        removePill?.background = ContextCompat.getDrawable(this, R.drawable.remove_pill_background)
+    }
+
+    // Remove-pill visibility & overlap
     private fun updateRemovePillVisibility(orbBottomY: Int) {
         val screenHeight = resources.displayMetrics.heightPixels
         val bottomQuadrant = screenHeight * 0.75f
@@ -386,7 +476,6 @@ class IvoryOverlayService : Service() {
         }?.start()
     }
 
-    // Overlap detection
     private fun checkOverlapWithRemovePill() {
         val pillLoc = IntArray(2)
         removePill?.getLocationOnScreen(pillLoc) ?: return
@@ -410,85 +499,6 @@ class IvoryOverlayService : Service() {
                 resetOrbColor()
                 setPillBlack()
             }
-        }
-    }
-
-    // Red-tint
-    private fun setOrbRed() {
-        orbTintRing?.alpha = 0.6f
-        orbTintRing?.setColorFilter(Color.parseColor("#FF3B30"), PorterDuff.Mode.SRC_ATOP)
-    }
-
-    private fun resetOrbColor() {
-        orbTintRing?.alpha = 0f
-        orbTintRing?.clearColorFilter()
-    }
-
-    private fun setPillRed() {
-        removePill?.background = ContextCompat.getDrawable(this, R.drawable.remove_pill_red)
-    }
-
-    private fun setPillBlack() {
-        removePill?.background = ContextCompat.getDrawable(this, R.drawable.remove_pill_background)
-    }
-
-    // Snap-to-edge
-    private fun snapToEdgeOrRemove() {
-        val screenW = resources.displayMetrics.widthPixels
-        val screenH = resources.displayMetrics.heightPixels
-        val orbX = orbParams.x
-        val orbY = orbParams.y
-
-        if (isOverRemove) {
-            hideOrb()
-            return
-        }
-
-        val leftDist = orbX
-        val rightDist = screenW - (orbX + dpToPx(ORB_SIZE))
-        val topDist = orbY
-        val bottomDist = screenH - (orbY + dpToPx(ORB_SIZE))
-
-        val targetX: Int
-        val targetY: Int
-
-        when {
-            leftDist < rightDist && leftDist < SNAP_THRESHOLD -> {
-                targetX = dpToPx(16)
-                targetY = orbY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
-            }
-            rightDist < SNAP_THRESHOLD -> {
-                targetX = screenW - dpToPx(ORB_SIZE) - dpToPx(16)
-                targetY = orbY.coerceIn(dpToPx(50), screenH - dpToPx(ORB_SIZE) - dpToPx(50))
-            }
-            topDist < bottomDist && topDist < SNAP_THRESHOLD -> {
-                targetX = orbX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
-                targetY = dpToPx(50)
-            }
-            bottomDist < SNAP_THRESHOLD -> {
-                targetX = orbX.coerceIn(dpToPx(16), screenW - dpToPx(ORB_SIZE) - dpToPx(16))
-                targetY = screenH - dpToPx(ORB_SIZE) - dpToPx(50)
-            }
-            else -> {
-                targetX = if (leftDist < rightDist) dpToPx(16) else screenW - dpToPx(ORB_SIZE) - dpToPx(16)
-                targetY = if (topDist < bottomDist) dpToPx(50) else screenH - dpToPx(ORB_SIZE) - dpToPx(50)
-            }
-        }
-
-        animateSnap(targetX, targetY)
-    }
-
-    private fun animateSnap(targetX: Int, targetY: Int) {
-        ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 260                                 
-            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-            addUpdateListener { anim ->
-                val prog = anim.animatedValue as Float
-                orbParams.x = (initialX + (targetX - initialX) * prog).toInt()
-                orbParams.y = (initialY + (targetY - initialY) * prog).toInt()
-                windowManager.updateViewLayout(orbRoot, orbParams)
-            }
-            start()
         }
     }
 
@@ -716,8 +726,6 @@ class IvoryOverlayService : Service() {
             aiResponseTitle?.invalidate()
         }
         aiResponseIcon?.post {
-            val w = aiResponseIcon?.width?.toFloat() ?: return@post
-            if (w <= 0) return@post
             aiResponseIcon?.setColorFilter(Color.parseColor("#e63946"))
         }
     }
