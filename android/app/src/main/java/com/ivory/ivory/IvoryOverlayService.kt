@@ -236,7 +236,7 @@ class IvoryOverlayService : Service() {
             responseScrollView = root.findViewById(R.id.responseScrollView)
             miniInputContainer = root.findViewById(R.id.miniInputContainer)
             miniInputCard = root.findViewById(R.id.miniInputCard)
-
+            
             inputField = root.findViewById(R.id.inputField)
             paperclipButton = root.findViewById(R.id.paperclipButton)
             micContainer = root.findViewById(R.id.micContainer)
@@ -258,26 +258,26 @@ class IvoryOverlayService : Service() {
             miniMicIcon = root.findViewById(R.id.miniMicIcon)
             miniVoiceContainer = root.findViewById(R.id.miniVoiceContainer)
             miniSendButton = root.findViewById(R.id.miniSendButton)
-            
+           
             responseScrollView?.isVerticalScrollBarEnabled = false
             responseScrollView?.overScrollMode = View.OVER_SCROLL_NEVER
-            
+           
             // Disable clipping on key containers
             responseCard?.let {
-                it.clipChildren = false
-                it.clipToPadding = false
+                it.setClipChildren(false)
+                it.setClipToPadding(false)
             }
             miniInputContainer?.let {
-                it.clipChildren = false
-                it.clipToPadding = false
+                it.setClipChildren(false)
+                it.setClipToPadding(false)
             }
             thinkingCard?.let {
-                it.clipChildren = false
-                it.clipToPadding = false
+                it.setClipChildren(false)
+                it.setClipToPadding(false)
             }
             originalInputCard?.let {
-                it.clipChildren = false
-                it.clipToPadding = false
+                it.setClipChildren(false)
+                it.setClipToPadding(false)
             }
         }
     }
