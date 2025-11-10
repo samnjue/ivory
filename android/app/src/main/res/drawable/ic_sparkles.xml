@@ -5,40 +5,28 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <defs>
-        <linearGradient
-            android:id="@+id/sparkleGradient"   
-            android:startX="0.0"
-            android:startY="0.5"
-            android:endX="1.0"
-            android:endY="0.5">
-            <stop android:offset="0.0" android:color="#e63946"/>
-            <stop android:offset="1.0" android:color="#4285f4"/>
-        </linearGradient>
-    </defs>
-
     <path
-        android:strokeColor="@id/sparkleGradient"   
         android:strokeWidth="1.8"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"
+        android:strokeColor="@drawable/sparkle_gradient"
         android:pathData="M12,2L13.09,8.26L22,9.27L13.09,14.26L12,22L10.91,14.26L2,9.27L10.91,8.26L12,2Z" />
 
     <path
-        android:strokeColor="@id/sparkleGradient"   
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"
+        android:strokeColor="@drawable/sparkle_gradient"
         android:pathData="M5,5L6.5,7.5L9,9L6.5,10.5L5,13L3.5,10.5L1,9L3.5,7.5L5,5Z" />
 
     <path
-        android:strokeColor="@id/sparkleGradient"  
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"
+        android:strokeColor="@drawable/sparkle_gradient"
         android:pathData="M19,15L20,17L22,18L20,19L19,21L18,19L16,18L18,17L19,15Z" />
 
 </vector>
