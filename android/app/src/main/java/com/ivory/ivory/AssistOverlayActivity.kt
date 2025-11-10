@@ -17,6 +17,7 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.core.content.ContextCompat
+import android.graphics.drawable.GradientDrawable
 
 class AssistOverlayActivity : Activity() {
     private val TAG = "AssistOverlayActivity"
@@ -71,15 +72,19 @@ class AssistOverlayActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate")
-
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-
         setContentView(R.layout.assist_overlay)
 
-        // Bind views
+        bindViews()
+        setupUi()
+        setupImeInsetListener()
+        applyTheme()
+        applyGradientToTitle()
+    }
+
+    private fun bindViews() {
         overlayContainer = findViewById(R.id.overlayContainer)
         originalInputCard = findViewById(R.id.originalInputCard)
         thinkingCard = findViewById(R.id.thinkingCard)
@@ -103,7 +108,7 @@ class AssistOverlayActivity : Activity() {
         aiResponseText = findViewById(R.id.aiResponseText)
         aiResponseTitle = findViewById(R.id.aiResponseTitle)
         aiResponseIcon = findViewById(R.id.aiResponseIcon)
-
+        
         miniInputField = findViewById(R.id.miniInputField)
         miniPaperclipButton = findViewById(R.id.miniPaperclipButton)
         miniMicContainer = findViewById(R.id.miniMicContainer)
@@ -124,7 +129,6 @@ class AssistOverlayActivity : Activity() {
         responseCard?.setOnClickListener { /* no-op */ }
         miniInputCard?.setOnClickListener { /* no-op */ }
 
-        // Original input
         paperclipButton?.setOnClickListener { Log.d(TAG, "Paperclip tapped") }
         voiceContainer?.setOnClickListener { openMainApp(null); finishWithoutAnimation() }
         sendButton?.setOnClickListener {
@@ -145,10 +149,7 @@ class AssistOverlayActivity : Activity() {
             }
         }
 
-        inputField?.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) showKeyboard(inputField)
-        }
-
+        inputField?.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) showKeyboard(inputField) }
         inputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -160,14 +161,13 @@ class AssistOverlayActivity : Activity() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Mini input
         miniPaperclipButton?.setOnClickListener { Log.d(TAG, "Mini paperclip tapped") }
         miniVoiceContainer?.setOnClickListener { openMainApp(null); finishWithoutAnimation() }
         miniSendButton?.setOnClickListener {
             val text = miniInputField?.text?.toString()?.trim() ?: ""
             if (text.isNotEmpty()) {
                 hideKeyboard()
-                miniInputField?.text?.clear()
+                miniInputField?. OPERtext?.clear()
                 startThinkingPhase()
             }
         }
@@ -180,11 +180,7 @@ class AssistOverlayActivity : Activity() {
                 stopListeningAnimation(false)
             }
         }
-
-        miniInputField?.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) showKeyboard(miniInputField)
-        }
-
+        miniInputField?.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) showKeyboard(miniInputField) }
         miniInputField?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -264,33 +260,21 @@ class AssistOverlayActivity : Activity() {
         }
     }
 
-    /** Dynamically adjust scroll view height + reduce gap to mini input */
     private fun updateResponseCardHeight() {
-        val displayMetrics = resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val maxHeight = (screenHeight * 0.8).toInt()
-
+        val maxHeight = (resources.displayMetrics.heightPixels * 0.8).toInt()
         responseContent?.measure(
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
-
+        
         val contentHeight = responseContent?.measuredHeight ?: 0
         val miniHeight = miniInputContainer?.height ?: 0
-        val extraBottomPadding = dpToPx(8)  // ← reduced gap
-        val total = contentHeight + miniHeight + extraBottomPadding
-
+        val gap = dpToPx(8)
+        val total = contentHeight + miniHeight + gap
         val targetHeight = total.coerceAtMost(maxHeight)
 
-        responseScrollView?.layoutParams?.apply {
-            height = targetHeight
-            responseScrollView?.layoutParams = this
-        }
-
-        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.apply {
-            bottomMargin = extraBottomPadding
-            responseContent?.layoutParams = this
-        }
+        responseScrollView?.layoutParams?.height = targetHeight
+        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = gap
     }
 
     private fun animateThinkingDots() {
@@ -393,6 +377,7 @@ class AssistOverlayActivity : Activity() {
                     Shader.TileMode.CLAMP
                 )
                 aiResponseTitle?.paint?.shader = gradient
+                aiResponseTitle?.invalidate()
             }
         }
     }
@@ -420,13 +405,22 @@ class AssistOverlayActivity : Activity() {
         // Backgrounds
         val bgRes = if (isDark) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
         val bg = ContextCompat.getDrawable(this, bgRes)
-        listOf(originalInputCard, thinkingCard, responseCard, miniInputCard).forEach { it?.background = bg }
+        listOf(originalInputCard, thinkingCard, responseCard).forEach { it?.background = bg }
 
         // Gradient borders
         val borderRes = if (isDark) R.drawable.gradient_border_dark else R.drawable.gradient_border_light
         val border = ContextCompat.getDrawable(this, borderRes)
         voiceContainer?.background = border
         miniVoiceContainer?.background = border
+
+        // Mini Input Card (now matches Service)
+        val cardColor = if (isDark) Color.parseColor("#1E1E1E") else Color.WHITE
+        val miniBg = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(24).toFloat()
+            setColor(cardColor)
+        }
+        miniInputCard?.background = miniBg
 
         applyGradientToTitle()
     }
@@ -447,14 +441,6 @@ class AssistOverlayActivity : Activity() {
             miniInputCard?.outlineProvider = ViewOutlineProvider.BACKGROUND
             miniInputCard?.requestLayout()
             miniInputCard?.invalidate()
-        }
-
-        responseContent?.post {
-            (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.apply {
-                bottomMargin = dpToPx(8)
-                responseContent?.layoutParams = this
-            }
-            responseContent?.requestLayout()
         }
 
         listOf(thinkingCard, responseCard).forEach {

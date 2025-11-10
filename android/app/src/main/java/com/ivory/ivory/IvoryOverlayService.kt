@@ -753,29 +753,19 @@ class IvoryOverlayService : Service() {
     }
 
     private fun updateResponseCardHeight() {
-        val dm = resources.displayMetrics
-        val maxH = (dm.heightPixels * 0.8).toInt()
-
+        val maxH = (resources.displayMetrics.heightPixels * 0.8).toInt()
         responseContent?.measure(
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
-
         val contentH = responseContent?.measuredHeight ?: 0
         val miniH = miniInputContainer?.height ?: 0
-        val extraBottom = dpToPx(8)                     
-        val total = contentH + miniH + extraBottom
+        val gap = dpToPx(8)
+        val total = contentH + miniH + gap
         val targetH = total.coerceAtMost(maxH)
 
-        responseScrollView?.layoutParams?.apply {
-            height = targetH
-            responseScrollView?.layoutParams = this
-        }
-
-        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.apply {
-            bottomMargin = extraBottom
-            responseContent?.layoutParams = this
-        }
+        responseScrollView?.layoutParams?.height = targetH
+        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = gap
     }
 
     private fun animateThinkingDots() {
