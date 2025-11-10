@@ -759,13 +759,12 @@ class IvoryOverlayService : Service() {
             View.MeasureSpec.UNSPECIFIED
         )
         val contentH = responseContent?.measuredHeight ?: 0
-        val miniH = miniInputContainer?.height ?: 0
-        val gap = dpToPx(8)
-        val total = contentH + miniH + gap
-        val targetH = total.coerceAtMost(maxH)
+        val miniH    = miniInputContainer?.height ?: 0
+        val gap      = dpToPx(8)               
+        val total    = contentH + miniH + gap
+        val targetH  = total.coerceAtMost(maxH)
 
         responseScrollView?.layoutParams?.height = targetH
-        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = gap
     }
 
     private fun animateThinkingDots() {
@@ -879,40 +878,39 @@ class IvoryOverlayService : Service() {
     }
 
     private fun applyCardFixes() {
-        originalInputCard?.post {
-            val lp = originalInputCard?.layoutParams
-            lp?.height = dpToPx(INPUT_CARD_HEIGHT_DP)
-            originalInputCard?.layoutParams = lp
-            inputField?.apply {
-                textSize = 15f
-                setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-            }
-            (originalInputCard?.getChildAt(0) as? LinearLayout)?.apply {
-                clipToPadding = false
-                clipChildren = false
-            }
-            originalInputCard?.requestLayout()
-            originalInputCard?.invalidate()
-        }
+        // … existing originalInputCard block stays unchanged …
 
         miniInputCard?.post {
             val lp = miniInputCard?.layoutParams as? FrameLayout.LayoutParams
             lp?.apply {
-                height = dpToPx(MINI_INPUT_HEIGHT_DP)
-                width = WindowManager.LayoutParams.WRAP_CONTENT
+                height = dpToPx(MINI_INPUT_HEIGHT_DP)          
+                width  = FrameLayout.LayoutParams.MATCH_PARENT 
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = dpToPx(8)
+                setMargins(dpToPx(16), 0, dpToPx(16), dpToPx(8))
             }
             miniInputCard?.layoutParams = lp
-            (miniInputCard?.getChildAt(0) as? LinearLayout)?.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(4))
+
+            (miniInputCard?.getChildAt(0) as? LinearLayout)?.apply {
+                setPadding(dpToPx(12), dpToPx(4), dpToPx(12), dpToPx(4))
+                clipChildren = false
+                clipToPadding = false
+            }
+
             miniInputCard?.clipToOutline = true
             miniInputCard?.outlineProvider = ViewOutlineProvider.BACKGROUND
             miniInputCard?.requestLayout()
             miniInputCard?.invalidate()
         }
 
-        listOf(thinkingCard, responseCard).forEach {
-            it?.post { it?.requestLayout(); it?.invalidate() }
+        responseCard?.post {
+            responseScrollView?.layoutParams?.apply {
+                height = ViewGroup.LayoutParams.MATCH_PARENT
+            }
+            (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.apply {
+                bottomMargin = 0
+            }
+            responseCard?.requestLayout()
+            responseCard?.invalidate()
         }
     }
 

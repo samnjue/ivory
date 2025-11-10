@@ -261,20 +261,18 @@ class AssistOverlayActivity : Activity() {
     }
 
     private fun updateResponseCardHeight() {
-        val maxHeight = (resources.displayMetrics.heightPixels * 0.8).toInt()
+        val maxH = (resources.displayMetrics.heightPixels * 0.8).toInt()
         responseContent?.measure(
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
+        val contentH = responseContent?.measuredHeight ?: 0
+        val miniH    = miniInputContainer?.height ?: 0
+        val gap      = dpToPx(8)               
+        val total    = contentH + miniH + gap
+        val targetH  = total.coerceAtMost(maxH)
 
-        val contentHeight = responseContent?.measuredHeight ?: 0
-        val miniHeight = miniInputContainer?.height ?: 0
-        val gap = dpToPx(8)
-        val total = contentHeight + miniHeight + gap
-        val targetHeight = total.coerceAtMost(maxHeight)
-
-        responseScrollView?.layoutParams?.height = targetHeight
-        (responseContent?.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = gap
+        responseScrollView?.layoutParams?.height = targetH
     }
 
     private fun animateThinkingDots() {
@@ -354,9 +352,8 @@ class AssistOverlayActivity : Activity() {
     private fun animateOverlayForKeyboard(imeHeight: Int) {
         currentAnimator?.cancel()
         val from = overlayContainer?.translationY ?: 0f
-        val extraLift = (20 * resources.displayMetrics.density).toInt()
+        val extraLift = (8 * resources.displayMetrics.density).toInt()
         val to = if (imeHeight > 0) -(imeHeight + extraLift).toFloat() else 0f
-
         currentAnimator = ValueAnimator.ofFloat(from, to).apply {
             duration = 250
             addUpdateListener {
