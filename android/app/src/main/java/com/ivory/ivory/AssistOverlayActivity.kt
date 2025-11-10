@@ -167,7 +167,7 @@ class AssistOverlayActivity : Activity() {
             val text = miniInputField?.text?.toString()?.trim() ?: ""
             if (text.isNotEmpty()) {
                 hideKeyboard()
-                miniInputField?. OPERtext?.clear()
+                miniInputField?.text?.clear()
                 startThinkingPhase()
             }
         }
@@ -266,7 +266,7 @@ class AssistOverlayActivity : Activity() {
             View.MeasureSpec.makeMeasureSpec(responseScrollView?.width ?: 0, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.UNSPECIFIED
         )
-        
+
         val contentHeight = responseContent?.measuredHeight ?: 0
         val miniHeight = miniInputContainer?.height ?: 0
         val gap = dpToPx(8)
