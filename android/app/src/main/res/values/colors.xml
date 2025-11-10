@@ -18,4 +18,6 @@
   <color name="hint_dark">#AAAAAA</color>
 
   <color name="ai_response_title">#e63946</color>
+
+  <color name="sparkle_gradient">@id/sparkleGradient</color>
 </resources>
