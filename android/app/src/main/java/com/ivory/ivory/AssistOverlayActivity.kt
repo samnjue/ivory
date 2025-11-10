@@ -267,12 +267,9 @@ class AssistOverlayActivity : Activity() {
             View.MeasureSpec.UNSPECIFIED
         )
         val contentH = responseContent?.measuredHeight ?: 0
-        val miniH    = miniInputContainer?.height ?: 0
-        val gap      = dpToPx(8)               
-        val total    = contentH + miniH + gap
-        val targetH  = total.coerceAtMost(maxH)
-
+        val targetH = contentH.coerceAtMost(maxH)
         responseScrollView?.layoutParams?.height = targetH
+        responseScrollView?.requestLayout()
     }
 
     private fun animateThinkingDots() {
