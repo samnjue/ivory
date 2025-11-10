@@ -8,13 +8,13 @@
     <defs>
         <linearGradient
             android:id="@+id/sparkleGradient"
-            android:startX="0%"
-            android:startY="50%"
-            android:endX="100%"
-            android:endY="50%"
+            android:startX="0.0"
+            android:startY="0.5"
+            android:endX="1.0"
+            android:endY="0.5"
             android:type="linear">
-            <stop android:offset="0%" android:color="#e63946"/>
-            <stop android:offset="100%" android:color="#4285f4"/>
+            <stop android:offset="0.0" android:color="#e63946"/>
+            <stop android:offset="1.0" android:color="#4285f4"/>
         </linearGradient>
     </defs>
 
