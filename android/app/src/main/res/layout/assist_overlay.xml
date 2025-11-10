@@ -63,7 +63,8 @@
                                 android:layout_width="20dp"
                                 android:layout_height="20dp"
                                 android:src="@drawable/ic_sparkles"
-                                android:layout_marginEnd="6dp" />
+                                android:layout_marginEnd="6dp"
+                                app:tint="@null" />
 
                             <TextView
                                 android:id="@+id/aiResponseTitle"
