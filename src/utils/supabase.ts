@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 
 const MAX_SECURESTORE_SIZE = 2048;
 
@@ -43,9 +44,12 @@ const hybridStorage = {
 	},
 };
 
-const supabaseUrl = "https://jznkrzfeyjcalqblgzri.supabase.co";
-const supabaseAnonKey =
-	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6bmtyemZleWpjYWxxYmxnenJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjM5MDUsImV4cCI6MjA3NTk5OTkwNX0.62AjwddpnQU-ydVdLb1BygCxNDRUFnIUyZCZzk2QgRk";
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase URL and Anon Key are required. Check app.config.ts and .env');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 	auth: {

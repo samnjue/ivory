@@ -39,6 +39,7 @@ import Svg, {
 	LinearGradient as SvgGradient,
 	Stop,
 } from "react-native-svg";
+import { useGeminiLive } from "../contexts/GeminiLiveContext";
 
 const { width, height } = Dimensions.get("window");
 
