@@ -61,9 +61,9 @@
 
                             <ImageView
                                 android:id="@+id/aiResponseIcon"
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@drawable/ic_sparkles"
+                                android:layout_width="21dp"
+                                android:layout_height="21dp"
+                                android:src="@drawable/sparkles"
                                 android:layout_marginEnd="6dp"
                                 app:tint="@null" />
 
