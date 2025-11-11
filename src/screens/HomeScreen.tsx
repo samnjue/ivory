@@ -40,10 +40,10 @@ import Svg, {
 	Stop,
 } from "react-native-svg";
 import { useGeminiLive } from "../contexts/GeminiLiveContext";
+import { Audio } from "expo-av";
 
 const { width, height } = Dimensions.get("window");
 
-// Subcomponent: Animated Waveform with flowing motion
 function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 	const amplitude = useSharedValue(show && !paused ? 1 : 0);
 	const phase = useSharedValue(0);
@@ -131,7 +131,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 	);
 }
 
-// Subcomponent: Pill Control Buttons
 function PillsControls({
 	show,
 	paused,
@@ -245,7 +244,6 @@ function PillsControls({
 	);
 }
 
-// Captions with continuous flow
 function CaptionsList({
 	visible,
 	captions,
@@ -303,7 +301,6 @@ function CaptionsList({
 	);
 }
 
-// MAIN HOMESCREEN COMPONENT
 export default function HomeScreen({ navigation }: { navigation: any }) {
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === "dark";
@@ -314,6 +311,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 	const [listeningMode, setListeningMode] = useState(false);
 	const [captionsEnabled, setCaptionsEnabled] = useState(false);
 	const [paused, setPaused] = useState(false);
+	const { live, startLive, stopLive } = useGeminiLive();
+	const [captions, setCaptions] = useState<string[]>([]);
+	const [micPermission, setMicPermission] = useState<boolean | null>(null);
 
 	// Animated values
 	const headerOpacity = useSharedValue(1);
@@ -325,6 +325,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 	const circleY = useSharedValue(0);
 	const circleScale = useSharedValue(1);
 	const circleBounce = useSharedValue(0);
+	const waveformAmplitude = useSharedValue(0);
 
 	useEffect(() => {
 		headerOpacity.value = withTiming(listeningMode ? 0 : 1, { duration: 400 });
@@ -390,25 +391,44 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		"These equations form the foundation of our modern understanding of gravity and cosmology.",
 	];
 
+	useEffect(() => {
+		(async () => {
+			const { status } = await Audio.requestPermissionsAsync();
+			setMicPermission(status === "granted");
+		})();
+	}, []);
+
 	// UI Event handlers
-	const handleStartListening = () => {
-		if (!listeningMode) {
-			// Bounce animation when activated
-			circleBounce.value = withSpring(
-				-15,
-				{ damping: 10, stiffness: 200 },
-				() => {
-					circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
-				}
-			);
-			setListeningMode(true);
+	const handleStartListening = async () => {
+		if (!micPermission) {
+			alert("Please grant microphone permission in Settings");
+			return;
 		}
+
+		setListeningMode(true);
+
+		await startLive({
+			onCaption: (txt: string | any[]) => {
+				const captionText = Array.isArray(txt) ? txt.join(" ") : txt;
+				setCaptions((c) => [...c, captionText]);
+				waveformAmplitude.value = withTiming(Math.min(captionText.length / 30, 1), {
+					duration: 120,
+				});
+			},
+			onMessage: () => {},
+			onTitle: (t: any) => {}, 
+			onEnd: () => setListeningMode(false),
+		});
+
+		await live?.startMicStreaming();
 	};
 
 	const handlePause = () => setPaused((p) => !p);
 
-	const handleStop = () => {
-		// Bounce down when deactivated
+	const handleStop = async () => {
+		await live?.stopMicStreaming();
+    	await stopLive();
+
 		circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
 			circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
 		});
@@ -416,6 +436,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		setListeningMode(false);
 		setPaused(false);
 		setCaptionsEnabled(false);
+		stopLive();
+		setCaptions([]);
 	};
 
 	const handleShare = () => {
@@ -561,7 +583,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 			{/* Captions */}
 			<CaptionsList
 				visible={listeningMode && captionsEnabled && !paused}
-				captions={captionsData}
+				captions={captions}
 			/>
 		</View>
 	);

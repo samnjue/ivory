@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef } from "react";
-import { GeminiLive } from "../services/geminLive";
+import { GeminiLive } from "../services/geminiLive";
 import { useAuth } from "./AuthContext"; 
 
 type GeminiContextType = {
