@@ -43,6 +43,7 @@ import { useGeminiLive } from "../contexts/GeminiLiveContext";
 import { Audio } from "expo-av";
 import { ChatAPI, GeminiService } from "../services/api";
 import { supabase } from "../utils/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -308,7 +309,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 	const { live, startLive, stopLive } = useGeminiLive();
 	const [captions, setCaptions] = useState<string[]>([]);
 	const [micPermission, setMicPermission] = useState<boolean | null>(null);
-	
+	const [isAuthReady, setIsAuthReady] = useState(false);
+
 	// Backend states
 	const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 	const [messageCount, setMessageCount] = useState(0);
@@ -387,12 +389,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		})();
 	}, []);
 
-	// Generate title after sufficient context
 	useEffect(() => {
 		if (messageCount === 4 && currentChatId) {
 			generateAndSetTitle();
 		}
 	}, [messageCount, currentChatId]);
+
+	const { user } = useAuth();
+
+	useEffect(() => {
+		if (user?.id) {
+			setIsAuthReady(true);
+		}
+	}, [user]);
 
 	const generateAndSetTitle = async () => {
 		try {
@@ -404,63 +413,64 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		}
 	};
 
+	console.log("useGeminiLive returned:", { live: !!live, hasStartLiveFn: typeof startLive === 'function' });
+
 	const handleStartListening = async () => {
-		if (!micPermission) {
-			alert("Please grant microphone permission in Settings");
+		console.log("handleStartListening: START");
+
+		const { user } = useAuth();
+		if (!user?.id) {
+			alert("Not logged in!");
+			return;
+		}
+
+		const { status } = await Audio.requestPermissionsAsync();
+		console.log("MIC PERMISSION:", status);
+		if (status !== "granted") {
+			alert("Microphone permission required");
 			return;
 		}
 
 		try {
-			// Get current user
-			const { data: { user } } = await supabase.auth.getUser();
-			if (!user) throw new Error("User not authenticated");
-
-			// Create new chat in database
-			const chat = await ChatAPI.createChat(user.id);
-			setCurrentChatId(chat.id);
-			
+			console.log("Setting listeningMode = true");
 			setListeningMode(true);
 
-			// Subscribe to captions for real-time sync
-			captionSubscription.current = ChatAPI.subscribeToCaptions(
-				chat.id,
-				(caption) => {
-					setCaptions((prev) => [...prev, caption.text]);
-				}
-			);
-
-			await startLive({
-				onCaption: async (txt: string | string[]) => {
-					const captionText = Array.isArray(txt) ? txt.join(" ") : txt;
-					setCaptions((c) => [...c, captionText]);
-					
-					// Save caption to database with timestamp
-					await ChatAPI.addCaption(chat.id, captionText, Date.now());
+			console.log("Calling startLive from context...");
+			const { chatId, live: liveInstance } = await startLive({
+				onCaption: (txt: string) => {
+					console.log("CAPTION:", txt);
+					setCaptions(c => [...c, txt]);
 				},
-				onMessage: async (msg: string) => {
-					// Save AI response as message
-					await ChatAPI.addMessage(chat.id, "assistant", msg);
-					setMessageCount((prev) => prev + 1);
-				},
-				onTitle: async (title: string) => {
-					// Update chat title when AI determines context
-					if (title && title.trim()) {
-						await ChatAPI.updateChatTitle(chat.id, title);
-					}
-				},
-				onEnd: async () => {
-					await ChatAPI.updateChatLiveStatus(chat.id, false);
+				onMessage: () => setMessageCount(p => p + 1),
+				onTitle: (title: string) => console.log("Title:", title),
+				onEnd: () => {
 					setListeningMode(false);
-					
-					// Navigate to chat screen to show full conversation
-					navigation.navigate("ChatScreen", { chatId: chat.id });
+					navigation.navigate("ChatScreen", { chatId });
 				},
 			});
 
-			await live?.startMicStreaming();
-		} catch (error) {
+			console.log("startLive SUCCESS, chatId:", chatId);
+
+			if (!chatId) throw new Error("Failed to get chat ID");
+
+			setCurrentChatId(chatId);
+
+			console.log("Subscribing to captions...");
+			captionSubscription.current = ChatAPI.subscribeToCaptions(
+				chatId,
+				(caption) => setCaptions(prev => [...prev, caption.text])
+			);
+
+			console.log("Starting mic streaming...");
+			await liveInstance.startMicStreaming();
+
+			console.log("MIC STREAMING STARTED");
+
+		} catch (error: any) {
 			console.error("Failed to start listening:", error);
-			alert("Failed to start conversation. Please try again.");
+			console.error("Error details:", error.message, error.stack);
+			alert(`Failed to start: ${error.message}`);
+			setListeningMode(false);
 		}
 	};
 
@@ -480,7 +490,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				await ChatAPI.updateChatLiveStatus(currentChatId, false);
 			}
 
-			// Unsubscribe from captions
 			if (captionSubscription.current) {
 				captionSubscription.current.unsubscribe();
 			}
@@ -493,12 +502,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 			setPaused(false);
 			setCaptionsEnabled(false);
 			setCaptions([]);
-			
-			// Navigate to chat screen
+
 			if (currentChatId) {
 				navigation.navigate("ChatScreen", { chatId: currentChatId });
 			}
-			
+
 			setCurrentChatId(null);
 			setMessageCount(0);
 		} catch (error) {
@@ -615,7 +623,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 					)}
 				</Animated.View>
 
-				{!listeningMode && (
+				{!listeningMode && isAuthReady && (
 					<Animated.View style={[startTextAnimStyle]}>
 						<TouchableOpacity
 							activeOpacity={0.7}
