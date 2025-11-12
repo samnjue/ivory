@@ -41,6 +41,8 @@ import Svg, {
 } from "react-native-svg";
 import { useGeminiLive } from "../contexts/GeminiLiveContext";
 import { Audio } from "expo-av";
+import { ChatAPI, GeminiService } from "../services/api";
+import { supabase } from "../utils/supabase";
 
 const { width, height } = Dimensions.get("window");
 
@@ -161,11 +163,9 @@ function PillsControls({
 	}));
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === "dark";
-	const colors = isDark ? COLORS.dark : COLORS.light;
 
 	return (
 		<Animated.View style={[styles.pillControlsWrapper, animStyle]}>
-			{/* Pause/Resume */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -177,10 +177,7 @@ function PillsControls({
 				onPress={onPause}
 			>
 				{paused ? (
-					<AudioLines
-						size={24}
-						color={isDark ? "#ffffff" : "#000000"}
-					/>
+					<AudioLines size={24} color={isDark ? "#ffffff" : "#000000"} />
 				) : (
 					<FontAwesome6
 						name="pause"
@@ -191,7 +188,6 @@ function PillsControls({
 				)}
 			</TouchableOpacity>
 
-			{/* Screen share: Rectangle + ArrowUp inside */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -215,7 +211,6 @@ function PillsControls({
 				</View>
 			</TouchableOpacity>
 
-			{/* Camera */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -233,7 +228,6 @@ function PillsControls({
 				/>
 			</TouchableOpacity>
 
-			{/* Stop */}
 			<TouchableOpacity
 				style={[styles.pillBtn, styles.pillBtnStop]}
 				onPress={onStop}
@@ -314,6 +308,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 	const { live, startLive, stopLive } = useGeminiLive();
 	const [captions, setCaptions] = useState<string[]>([]);
 	const [micPermission, setMicPermission] = useState<boolean | null>(null);
+	
+	// Backend states
+	const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+	const [messageCount, setMessageCount] = useState(0);
+	const captionSubscription = useRef<any>(null);
 
 	// Animated values
 	const headerOpacity = useSharedValue(1);
@@ -325,7 +324,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 	const circleY = useSharedValue(0);
 	const circleScale = useSharedValue(1);
 	const circleBounce = useSharedValue(0);
-	const waveformAmplitude = useSharedValue(0);
 
 	useEffect(() => {
 		headerOpacity.value = withTiming(listeningMode ? 0 : 1, { duration: 400 });
@@ -382,15 +380,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		],
 	}));
 
-	// Captions data
-	const captionsData = [
-		"Einstein's field equations are the core of Einstein's general theory of relativity.",
-		"They describe how matter and energy in the universe curve the fabric of spacetime.",
-		"The equations are a set of ten interrelated differential equations.",
-		"The curvature of spacetime is directly related to the energy and momentum of whatever is present.",
-		"These equations form the foundation of our modern understanding of gravity and cosmology.",
-	];
-
 	useEffect(() => {
 		(async () => {
 			const { status } = await Audio.requestPermissionsAsync();
@@ -398,46 +387,123 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		})();
 	}, []);
 
-	// UI Event handlers
+	// Generate title after sufficient context
+	useEffect(() => {
+		if (messageCount === 4 && currentChatId) {
+			generateAndSetTitle();
+		}
+	}, [messageCount, currentChatId]);
+
+	const generateAndSetTitle = async () => {
+		try {
+			const messages = await ChatAPI.fetchMessages(currentChatId!);
+			const title = await GeminiService.generateChatTitle(messages);
+			await ChatAPI.updateChatTitle(currentChatId!, title);
+		} catch (error) {
+			console.error("Failed to generate title:", error);
+		}
+	};
+
 	const handleStartListening = async () => {
 		if (!micPermission) {
 			alert("Please grant microphone permission in Settings");
 			return;
 		}
 
-		setListeningMode(true);
+		try {
+			// Get current user
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) throw new Error("User not authenticated");
 
-		await startLive({
-			onCaption: (txt: string | any[]) => {
-				const captionText = Array.isArray(txt) ? txt.join(" ") : txt;
-				setCaptions((c) => [...c, captionText]);
-				waveformAmplitude.value = withTiming(Math.min(captionText.length / 30, 1), {
-					duration: 120,
-				});
-			},
-			onMessage: () => {},
-			onTitle: (t: any) => {}, 
-			onEnd: () => setListeningMode(false),
-		});
+			// Create new chat in database
+			const chat = await ChatAPI.createChat(user.id);
+			setCurrentChatId(chat.id);
+			
+			setListeningMode(true);
 
-		await live?.startMicStreaming();
+			// Subscribe to captions for real-time sync
+			captionSubscription.current = ChatAPI.subscribeToCaptions(
+				chat.id,
+				(caption) => {
+					setCaptions((prev) => [...prev, caption.text]);
+				}
+			);
+
+			await startLive({
+				onCaption: async (txt: string | string[]) => {
+					const captionText = Array.isArray(txt) ? txt.join(" ") : txt;
+					setCaptions((c) => [...c, captionText]);
+					
+					// Save caption to database with timestamp
+					await ChatAPI.addCaption(chat.id, captionText, Date.now());
+				},
+				onMessage: async (msg: string) => {
+					// Save AI response as message
+					await ChatAPI.addMessage(chat.id, "assistant", msg);
+					setMessageCount((prev) => prev + 1);
+				},
+				onTitle: async (title: string) => {
+					// Update chat title when AI determines context
+					if (title && title.trim()) {
+						await ChatAPI.updateChatTitle(chat.id, title);
+					}
+				},
+				onEnd: async () => {
+					await ChatAPI.updateChatLiveStatus(chat.id, false);
+					setListeningMode(false);
+					
+					// Navigate to chat screen to show full conversation
+					navigation.navigate("ChatScreen", { chatId: chat.id });
+				},
+			});
+
+			await live?.startMicStreaming();
+		} catch (error) {
+			console.error("Failed to start listening:", error);
+			alert("Failed to start conversation. Please try again.");
+		}
 	};
 
-	const handlePause = () => setPaused((p) => !p);
+	const handlePause = async () => {
+		setPaused((p) => !p);
+		if (currentChatId) {
+			await ChatAPI.updateChatLiveStatus(currentChatId, paused);
+		}
+	};
 
 	const handleStop = async () => {
-		await live?.stopMicStreaming();
-    	await stopLive();
+		try {
+			await live?.stopMicStreaming();
+			await stopLive();
 
-		circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
-			circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
-		});
+			if (currentChatId) {
+				await ChatAPI.updateChatLiveStatus(currentChatId, false);
+			}
 
-		setListeningMode(false);
-		setPaused(false);
-		setCaptionsEnabled(false);
-		stopLive();
-		setCaptions([]);
+			// Unsubscribe from captions
+			if (captionSubscription.current) {
+				captionSubscription.current.unsubscribe();
+			}
+
+			circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
+				circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
+			});
+
+			setListeningMode(false);
+			setPaused(false);
+			setCaptionsEnabled(false);
+			setCaptions([]);
+			
+			// Navigate to chat screen
+			if (currentChatId) {
+				navigation.navigate("ChatScreen", { chatId: currentChatId });
+			}
+			
+			setCurrentChatId(null);
+			setMessageCount(0);
+		} catch (error) {
+			console.error("Failed to stop session:", error);
+		}
 	};
 
 	const handleShare = () => {
@@ -452,7 +518,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
-			{/* Top Avatar */}
 			<Animated.View
 				style={[
 					styles.avatarContainer,
@@ -468,7 +533,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				</TouchableOpacity>
 			</Animated.View>
 
-			{/* Top Center Brand */}
 			<Animated.View
 				style={[styles.brand, headerAnimStyle, { top: insets.top + 15 }]}
 			>
@@ -479,7 +543,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				/>
 			</Animated.View>
 
-			{/* New Chat Header Text */}
 			<Animated.View
 				style={[
 					styles.newChatHeader,
@@ -492,7 +555,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				</Text>
 			</Animated.View>
 
-			{/* Captions Icon Top Right */}
 			<Animated.View
 				style={[
 					styles.captionsIcon,
@@ -509,7 +571,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				</TouchableOpacity>
 			</Animated.View>
 
-			{/* Main Center Content */}
 			<View style={styles.centerContent}>
 				<Animated.View
 					style={[
@@ -543,7 +604,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 						</TouchableOpacity>
 					</LinearGradient>
 
-					{/* Pause Text Overlay */}
 					{listeningMode && paused && (
 						<Animated.View
 							style={[styles.pauseTextContainer, pauseTextAnimStyle]}
@@ -555,7 +615,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 					)}
 				</Animated.View>
 
-				{/* Start Text */}
 				{!listeningMode && (
 					<Animated.View style={[startTextAnimStyle]}>
 						<TouchableOpacity
@@ -570,7 +629,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				)}
 			</View>
 
-			{/* Pills Controls */}
 			<PillsControls
 				show={listeningMode}
 				paused={paused}
@@ -580,7 +638,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				onCamera={handleCamera}
 			/>
 
-			{/* Captions */}
 			<CaptionsList
 				visible={listeningMode && captionsEnabled && !paused}
 				captions={captions}
@@ -642,7 +699,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 16,
 		elevation: 40,
 		borderRadius: 140,
-    zIndex: 200
+		zIndex: 200,
 	},
 	gradientBorder: {
 		width: 245,
