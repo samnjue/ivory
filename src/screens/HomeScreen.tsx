@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
 	View,
 	Text,
@@ -8,6 +8,7 @@ import {
 	Dimensions,
 	useColorScheme,
 	ScrollView,
+	Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../constants/colors";
@@ -39,10 +40,21 @@ import Svg, {
 	LinearGradient as SvgGradient,
 	Stop,
 } from "react-native-svg";
+import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
 
 const { width, height } = Dimensions.get("window");
 
-// Subcomponent: Animated Waveform with flowing motion
+const DEEPGRAM_API_KEY = "5e3a3494c6e466ee6b9ca25c925cc442bff71f76";
+const DEEPGRAM_WS_URL = `wss://api.deepgram.com/v1/listen?model=nova-2&language=en&interim_results=true&punctuate=true&smart_format=true`;
+
+const GEMINI_API_KEY = "AIzaSyBVBUbRke_aAwNiwGnu5CrxzbCRWkHrrrE";
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+const SAMPLE_RATE = 16000;
+const CHANNELS = 1;
+const BIT_DEPTH = 16;
+
 function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 	const amplitude = useSharedValue(show && !paused ? 1 : 0);
 	const phase = useSharedValue(0);
@@ -70,7 +82,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 		const A = 25 * amplitude.value;
 		const λ = width / 1.0;
 		const φ = phase.value;
-
 		const baseY = interpolate(
 			waveHeight.value,
 			[0, 1],
@@ -84,7 +95,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 			path += ` L ${x} ${y}`;
 		}
 		path += ` L ${width} 200 L 0 200 Z`;
-
 		return { d: path };
 	});
 
@@ -92,7 +102,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 		const A = 18 * amplitude.value;
 		const λ = width / 1.1;
 		const φ = phase.value + Math.PI / 2;
-
 		const baseY = interpolate(
 			waveHeight.value,
 			[0, 1],
@@ -122,7 +131,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 						<Stop offset="100%" stopColor="#ff7b89" stopOpacity="0.2" />
 					</SvgGradient>
 				</Defs>
-
 				<AnimatedPath animatedProps={animatedProps} fill="url(#waveGrad1)" />
 				<AnimatedPath animatedProps={animatedProps2} fill="url(#waveGrad2)" />
 			</Svg>
@@ -130,7 +138,6 @@ function Waveform({ show, paused }: { show: boolean; paused: boolean }) {
 	);
 }
 
-// Subcomponent: Pill Control Buttons
 function PillsControls({
 	show,
 	paused,
@@ -147,7 +154,6 @@ function PillsControls({
 	onCamera: () => void;
 }) {
 	const translateY = useSharedValue(show ? 0 : 100);
-
 	useEffect(() => {
 		translateY.value = withSpring(show ? 0 : 100, {
 			damping: 18,
@@ -161,11 +167,9 @@ function PillsControls({
 	}));
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === "dark";
-	const colors = isDark ? COLORS.dark : COLORS.light;
 
 	return (
 		<Animated.View style={[styles.pillControlsWrapper, animStyle]}>
-			{/* Pause/Resume */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -177,10 +181,7 @@ function PillsControls({
 				onPress={onPause}
 			>
 				{paused ? (
-					<AudioLines
-						size={24}
-						color={isDark ? "#ffffff" : "#000000"}
-					/>
+					<AudioLines size={24} color={isDark ? "#ffffff" : "#000000"} />
 				) : (
 					<FontAwesome6
 						name="pause"
@@ -191,7 +192,6 @@ function PillsControls({
 				)}
 			</TouchableOpacity>
 
-			{/* Screen share: Rectangle + ArrowUp inside */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -215,7 +215,6 @@ function PillsControls({
 				</View>
 			</TouchableOpacity>
 
-			{/* Camera */}
 			<TouchableOpacity
 				style={[
 					styles.pillBtn,
@@ -233,7 +232,6 @@ function PillsControls({
 				/>
 			</TouchableOpacity>
 
-			{/* Stop */}
 			<TouchableOpacity
 				style={[styles.pillBtn, styles.pillBtnStop]}
 				onPress={onStop}
@@ -244,7 +242,6 @@ function PillsControls({
 	);
 }
 
-// Captions with continuous flow
 function CaptionsList({
 	visible,
 	captions,
@@ -254,7 +251,6 @@ function CaptionsList({
 }) {
 	const scrollViewRef = useRef<ScrollView>(null);
 	const opacity = useSharedValue(visible ? 1 : 0);
-
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === "dark";
 	const colors = isDark ? COLORS.dark : COLORS.light;
@@ -264,15 +260,15 @@ function CaptionsList({
 	}, [visible]);
 
 	useEffect(() => {
-		if (visible && scrollViewRef.current && captions.length > 0) {
-			setTimeout(() => {
-				scrollViewRef.current?.scrollToEnd({ animated: true });
-			}, 100);
+		if (visible && scrollViewRef.current && captions.length) {
+			setTimeout(
+				() => scrollViewRef.current?.scrollToEnd({ animated: true }),
+				100
+			);
 		}
 	}, [captions, visible]);
 
 	const fadeAnim = useAnimatedStyle(() => ({ opacity: opacity.value }));
-
 	const captionsText = captions.join(" ");
 
 	return (
@@ -302,19 +298,242 @@ function CaptionsList({
 	);
 }
 
-// MAIN HOMESCREEN COMPONENT
 export default function HomeScreen({ navigation }: { navigation: any }) {
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === "dark";
 	const colors = isDark ? COLORS.dark : COLORS.light;
 	const insets = useSafeAreaInsets();
 
-	// UI States
 	const [listeningMode, setListeningMode] = useState(false);
 	const [captionsEnabled, setCaptionsEnabled] = useState(false);
 	const [paused, setPaused] = useState(false);
+	const [captions, setCaptions] = useState<string[]>([]);
 
-	// Animated values
+	const recordingRef = useRef<Audio.Recording | null>(null);
+	const wsRef = useRef<WebSocket | null>(null);
+	const chunkTimer = useRef<NodeJS.Timeout | null>(null);
+	const isProcessing = useRef(false);
+
+	const callGemini = async (text: string): Promise<string | null> => {
+		if (isProcessing.current) return null;
+		isProcessing.current = true;
+
+		try {
+			const res = await fetch(GEMINI_API_URL, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					contents: [{ role: "user", parts: [{ text }] }],
+				}),
+			});
+			const data = await res.json();
+			return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+		} catch (err) {
+			console.error("Gemini error:", err);
+			return null;
+		} finally {
+			isProcessing.current = false;
+		}
+	};
+
+	const speakResponse = async (text: string) => {
+		await Speech.speak(text, {
+			language: "en-US",
+			rate: 0.95,
+			pitch: 1.0,
+		});
+	};
+
+	const startRecording = useCallback(async () => {
+		try {
+			console.log("Starting recording...");
+			const { granted } = await Audio.requestPermissionsAsync();
+			if (!granted) {
+				Alert.alert("Error", "Microphone permission denied.");
+				handleStop();
+				return;
+			}
+
+			await Audio.setAudioModeAsync({
+				allowsRecordingIOS: true,
+				playsInSilentModeIOS: true,
+			});
+
+			const recording = new Audio.Recording();
+			await recording.prepareToRecordAsync({
+				android: {
+					extension: ".wav",
+					outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+					audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+					sampleRate: SAMPLE_RATE,
+					numberOfChannels: CHANNELS,
+					bitRate: 128000,
+				},
+				ios: {
+					extension: ".wav",
+					audioQuality: Audio.IOSAudioQuality.HIGH,
+					sampleRate: SAMPLE_RATE,
+					numberOfChannels: CHANNELS,
+					bitRate: 128000,
+					linearPCMBitDepth: BIT_DEPTH,
+					linearPCMIsBigEndian: false,
+					linearPCMIsFloat: false,
+				},
+				web: {
+					mimeType: "audio/webm",
+					bitsPerSecond: 128000,
+				},
+			});
+
+			await recording.startAsync();
+			recordingRef.current = recording;
+			console.log("Recording started");
+
+			chunkTimer.current = setInterval(() => {
+				if (
+					!recordingRef.current ||
+					!wsRef.current ||
+					paused ||
+					wsRef.current.readyState !== WebSocket.OPEN
+				)
+					return;
+
+				const uri = recordingRef.current?.getURI();
+				if (!uri) return;
+
+				fetch(uri)
+					.then((res) => res.arrayBuffer())
+					.then((buf) => {
+						const pcm = new Uint8Array(buf);
+						if (pcm.length > 0) {
+							wsRef.current?.send(pcm);
+						}
+					})
+					.catch(console.error);
+			}, 100);
+		} catch (e) {
+			console.error("Recording error:", e);
+			Alert.alert("Error", `Failed to start recording: ${e}`);
+			handleStop();
+		}
+	}, [paused]);
+
+	const startDeepgram = useCallback(() => {
+		if (wsRef.current) return;
+
+		console.log("Connecting to Deepgram...");
+		const ws = new WebSocket(DEEPGRAM_WS_URL);
+		wsRef.current = ws;
+		ws.binaryType = "arraybuffer";
+
+		ws.onopen = () => {
+			console.log("Deepgram connected");
+			startRecording();
+		};
+
+		ws.onmessage = async (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.type !== "Results") return;
+
+				const transcript = data.channel?.alternatives?.[0]?.transcript;
+				const isFinal = data.is_final;
+
+				if (transcript && isFinal && transcript.trim()) {
+					console.log("Final:", transcript);
+					setCaptions((c) => [...c.slice(-20), `You: ${transcript}`]);
+
+					const response = await callGemini(transcript);
+					if (response) {
+						console.log("AI:", response);
+						setCaptions((c) => [...c.slice(-20), `Ivory: ${response}`]);
+						speakResponse(response);
+					}
+				}
+			} catch (err) {
+				console.warn("Deepgram parse error:", err);
+			}
+		};
+
+		ws.onerror = () => {
+			console.error("Deepgram WS error");
+			Alert.alert("Connection failed", "Check Deepgram key or network.");
+			handleStop();
+		};
+
+		ws.onclose = () => {
+			console.log("Deepgram closed");
+			wsRef.current = null;
+		};
+	}, [startRecording]);
+
+	const handleStartListening = () => {
+		if (listeningMode) return;
+
+		console.log("Starting listening mode...");
+		circleBounce.value = withSpring(
+			-15,
+			{ damping: 10, stiffness: 200 },
+			() => {
+				circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
+			}
+		);
+
+		setListeningMode(true);
+		setCaptions([]);
+		setPaused(false);
+		startDeepgram();
+	};
+
+	const handlePause = async () => {
+		const newPaused = !paused;
+		setPaused(newPaused);
+
+		if (recordingRef.current) {
+			if (newPaused) {
+				await recordingRef.current.pauseAsync();
+			} else {
+				await recordingRef.current.startAsync();
+			}
+		}
+	};
+
+	const handleStop = async () => {
+		console.log("Stopping...");
+
+		if (chunkTimer.current) {
+			clearInterval(chunkTimer.current);
+			chunkTimer.current = null;
+		}
+
+		if (recordingRef.current) {
+			try {
+				await recordingRef.current.stopAndUnloadAsync();
+			} catch (e) {
+				console.error("Stop recording error:", e);
+			}
+			recordingRef.current = null;
+		}
+
+		if (wsRef.current) {
+			wsRef.current.close();
+			wsRef.current = null;
+		}
+
+		Speech.stop();
+
+		setListeningMode(false);
+		setPaused(false);
+		setCaptionsEnabled(false);
+		setCaptions([]);
+
+		circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
+			circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
+		});
+	};
+
+	const handleToggleCaptions = () => setCaptionsEnabled((c) => !c);
+
 	const headerOpacity = useSharedValue(1);
 	const avatarOpacity = useSharedValue(1);
 	const newChatOpacity = useSharedValue(0);
@@ -354,7 +573,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		}
 	}, [captionsEnabled, paused]);
 
-	// Animated styles
 	const headerAnimStyle = useAnimatedStyle(() => ({
 		opacity: headerOpacity.value,
 	}));
@@ -380,53 +598,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 		],
 	}));
 
-	// Captions data
-	const captionsData = [
-		"Einstein's field equations are the core of Einstein's general theory of relativity.",
-		"They describe how matter and energy in the universe curve the fabric of spacetime.",
-		"The equations are a set of ten interrelated differential equations.",
-		"The curvature of spacetime is directly related to the energy and momentum of whatever is present.",
-		"These equations form the foundation of our modern understanding of gravity and cosmology.",
-	];
-
-	// UI Event handlers
-	const handleStartListening = () => {
-		if (!listeningMode) {
-			// Bounce animation when activated
-			circleBounce.value = withSpring(
-				-15,
-				{ damping: 10, stiffness: 200 },
-				() => {
-					circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
-				}
-			);
-			setListeningMode(true);
-		}
-	};
-
-	const handlePause = () => setPaused((p) => !p);
-
-	const handleStop = () => {
-		// Bounce down when deactivated
-		circleBounce.value = withSpring(10, { damping: 10, stiffness: 200 }, () => {
-			circleBounce.value = withSpring(0, { damping: 12, stiffness: 150 });
-		});
-
-		setListeningMode(false);
-		setPaused(false);
-		setCaptionsEnabled(false);
-	};
-
-	const handleShare = () => {
-		console.log("Screen share pressed");
-	};
-
-	const handleCamera = () => {
-		console.log("Camera pressed");
-	};
-
-	const handleToggleCaptions = () => setCaptionsEnabled((c) => !c);
-
+	// ── Render ───────────────────────────────────────────────────────────────
 	return (
 		<View style={[styles.container, { backgroundColor: colors.background }]}>
 			{/* Top Avatar */}
@@ -456,7 +628,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				/>
 			</Animated.View>
 
-			{/* New Chat Header Text */}
+			{/* New Chat Header */}
 			<Animated.View
 				style={[
 					styles.newChatHeader,
@@ -469,7 +641,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				</Text>
 			</Animated.View>
 
-			{/* Captions Icon Top Right */}
+			{/* Captions Icon */}
 			<Animated.View
 				style={[
 					styles.captionsIcon,
@@ -486,7 +658,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				</TouchableOpacity>
 			</Animated.View>
 
-			{/* Main Center Content */}
+			{/* Center Content */}
 			<View style={styles.centerContent}>
 				<Animated.View
 					style={[
@@ -520,7 +692,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 						</TouchableOpacity>
 					</LinearGradient>
 
-					{/* Pause Text Overlay */}
 					{listeningMode && paused && (
 						<Animated.View
 							style={[styles.pauseTextContainer, pauseTextAnimStyle]}
@@ -532,7 +703,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 					)}
 				</Animated.View>
 
-				{/* Start Text */}
 				{!listeningMode && (
 					<Animated.View style={[startTextAnimStyle]}>
 						<TouchableOpacity
@@ -547,20 +717,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 				)}
 			</View>
 
-			{/* Pills Controls */}
+			{/* Pills */}
 			<PillsControls
 				show={listeningMode}
 				paused={paused}
 				onPause={handlePause}
 				onStop={handleStop}
-				onShare={handleShare}
-				onCamera={handleCamera}
+				onShare={() => console.log("Share")}
+				onCamera={() => console.log("Camera")}
 			/>
 
-			{/* Captions */}
+			{/* Live captions */}
 			<CaptionsList
 				visible={listeningMode && captionsEnabled && !paused}
-				captions={captionsData}
+				captions={captions}
 			/>
 		</View>
 	);
@@ -590,26 +760,26 @@ const styles = StyleSheet.create({
 	},
 	brandImage: {
 		height: 35,
-		width: 120,
+		width: 120
 	},
 	newChatHeader: {
 		position: "absolute",
 		alignSelf: "center",
-		zIndex: 9,
+		zIndex: 9
 	},
 	newChatText: {
 		fontSize: 18,
-		fontFamily: "RedRose_500Medium",
+		fontFamily: "RedRose_500Medium"
 	},
 	captionsIcon: {
 		position: "absolute",
 		right: 22,
-		zIndex: 999,
+		zIndex: 999
 	},
 	centerContent: {
 		flex: 1,
 		justifyContent: "center",
-		alignItems: "center",
+		alignItems: "center"
 	},
 	shadowContainer: {
 		marginBottom: 44,
@@ -619,7 +789,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 16,
 		elevation: 40,
 		borderRadius: 140,
-    zIndex: 200
+		zIndex: 200,
 	},
 	gradientBorder: {
 		width: 245,
@@ -641,7 +811,7 @@ const styles = StyleSheet.create({
 	logo: {
 		width: 150,
 		height: 150,
-		zIndex: 2,
+		zIndex: 2
 	},
 	waveformContainer: {
 		position: "absolute",
@@ -699,7 +869,7 @@ const styles = StyleSheet.create({
 	},
 	pillBtnStop: {
 		backgroundColor: "#e63946",
-		borderColor: "#e63946",
+		borderColor: "#e63946"
 	},
 	screenShareIcon: {
 		position: "relative",
@@ -710,7 +880,7 @@ const styles = StyleSheet.create({
 	},
 	arrowUpIcon: {
 		position: "absolute",
-		top: 5,
+		top: 5
 	},
 	captionsContainer: {
 		position: "absolute",
@@ -739,11 +909,11 @@ const styles = StyleSheet.create({
 		pointerEvents: "none",
 	},
 	flatList: {
-		flex: 1,
+		flex: 1
 	},
 	flatListContent: {
 		paddingVertical: 20,
-		paddingHorizontal: 20,
+		paddingHorizontal: 20
 	},
 	captionText: {
 		fontSize: 25,
