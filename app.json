@@ -54,7 +54,11 @@
             "gradleCommand": ":app:assembleDebug"
           }
         }
-      ]
+      ],
+      "expo-audio",
+        {
+          "microphonePermission": "Allow ivory to access your microphone."
+        }
     ],
     "extra": {
       "eas": {

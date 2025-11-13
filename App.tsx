@@ -23,7 +23,6 @@ import {
 	TransitionSpecs,
 } from "@react-navigation/stack";
 import { DeviceEventEmitter, NativeModules, Platform } from "react-native";
-import { GeminiProvider } from "./src/contexts/GeminiLiveContext";
 
 const { AssistantModule } = NativeModules;
 
@@ -133,13 +132,11 @@ export default function App() {
 		<>
 			<NavigationContainer ref={navigationRef}>
 				<AuthProvider>
-					<GeminiProvider>
 						<ThemeProvider>
 						<SafeAreaProvider>
 							<RootNavigator />
 						</SafeAreaProvider>
 					</ThemeProvider>
-					</GeminiProvider>
 				</AuthProvider>
 			</NavigationContainer>
 
